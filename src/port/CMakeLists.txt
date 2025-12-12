@@ -15,7 +15,8 @@ if(DEFINED DMOD_CPU)
     set(TARGET_CPU "${DMOD_CPU}")
 elseif(DEFINED DMOD_ARCH)
     # Extract CPU from architecture string (e.g., "armv7-cortex-m4" -> "cortex-m4")
-    string(REGEX MATCH "cortex-m[0-9]+" TARGET_CPU "${DMOD_ARCH}")
+    # Pattern matches cortex-m[digit]+ with optional '+' suffix (e.g., cortex-m0+)
+    string(REGEX MATCH "cortex-m[0-9]+\\+?" TARGET_CPU "${DMOD_ARCH}")
 endif()
 
 # Define CPU family to compatible core mapping
