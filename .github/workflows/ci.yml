@@ -22,8 +22,7 @@ jobs:
         id: list-families
         run: |
           # Find all CPU families by looking for directories containing port.c
-          CPU_FAMILIES=$(find src/port -mindepth 2 -maxdepth 2 -name "port.c" -type f \
-            -exec dirname {} \; | \
+          CPU_FAMILIES=$(find src/port -mindepth 2 -maxdepth 2 -name "port.c" -type f -printf '%h\n' | \
             xargs -n1 basename | \
             sort | \
             jq -R -s -c 'split("\n") | map(select(length > 0))')
