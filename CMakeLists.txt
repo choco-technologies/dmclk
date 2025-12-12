@@ -4,6 +4,11 @@
 cmake_minimum_required(VERSION 3.18)
 
 # ======================================================================
+#               Parameters
+# ======================================================================
+set(DMCLK_MCU_SERIES "stm32f7" CACHE STRING "Target MCU series")
+
+# ======================================================================
 #               For VS Code
 # ======================================================================
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -52,6 +57,11 @@ include(${DMOD_DIR}/paths.cmake)
 dmod_setup_external_module()
 
 # ======================================================================
+#               Subdirectories
+# ======================================================================
+add_subdirectory(src/port)
+
+# ======================================================================
 #               dmclk Module Configuration
 # ======================================================================
 # Name of the module 
@@ -80,6 +90,10 @@ dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
 dmod_link_modules(${DMOD_MODULE_NAME}
     dmdrvi
     dmini
+)
+
+target_link_libraries(${DMOD_MODULE_NAME} 
+    dmclk_port_if
 )
 
 target_include_directories(${DMOD_MODULE_NAME} PRIVATE

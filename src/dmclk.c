@@ -1,6 +1,8 @@
 #define DMOD_ENABLE_REGISTRATION    ON
 #include "dmclk.h"
 #include "dmdrvi.h"
+#include "dmini.h"
+#include "dmclk_port.h"
 
 /**
  * @brief Initialize the DMDRVI module
