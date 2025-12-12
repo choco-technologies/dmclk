@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop, feature/**, copilot/** ]
+    branches: [ main, develop, 'feature/**', 'copilot/**' ]
 
 jobs:
   build-and-test:

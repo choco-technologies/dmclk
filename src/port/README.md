@@ -9,12 +9,42 @@ port/
 ├── stm32_common/          # Common code for all STM32 families
 │   ├── stm32_common.h     # Shared declarations
 │   └── stm32_common.c     # Shared implementation
+├── stm32f0/               # STM32F0-specific implementation
+│   └── port.c
+├── stm32f1/               # STM32F1-specific implementation
+│   └── port.c
+├── stm32f2/               # STM32F2-specific implementation
+│   └── port.c
+├── stm32f3/               # STM32F3-specific implementation
+│   └── port.c
 ├── stm32f4/               # STM32F4-specific implementation
 │   └── port.c
 ├── stm32f7/               # STM32F7-specific implementation
 │   └── port.c
+├── stm32g0/               # STM32G0-specific implementation
+│   └── port.c
+├── stm32g4/               # STM32G4-specific implementation
+│   └── port.c
+├── stm32h7/               # STM32H7-specific implementation
+│   └── port.c
+├── stm32l0/               # STM32L0-specific implementation
+│   └── port.c
+├── stm32l1/               # STM32L1-specific implementation
+│   └── port.c
+├── stm32l4/               # STM32L4-specific implementation
+│   └── port.c
+├── stm32l5/               # STM32L5-specific implementation
+│   └── port.c
+├── stm32u5/               # STM32U5-specific implementation
+│   └── port.c
+├── stm32wb/               # STM32WB-specific implementation (Wireless)
+│   └── port.c
+├── stm32wl/               # STM32WL-specific implementation (Wireless)
+│   └── port.c
 └── CMakeLists.txt         # Build configuration
 ```
+
+**Note:** Currently implemented families: STM32F4, STM32F7. Additional families listed above can be added following the same pattern.
 
 ## Adding Support for New Microcontroller Families
 
