@@ -99,7 +99,7 @@ jobs:
           
           echo "Build completed for CPU family: ${CPU_FAMILY}"
           ls -lh dmf/
-      
+
       - name: Verify dmclk_port module files
         run: |
           CPU_FAMILY="${{ matrix.cpu_family }}"
