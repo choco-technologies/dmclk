@@ -52,10 +52,10 @@ jobs:
       - name: List available CPU families
         id: list-families
         run: |
-          # Find all directories in src/port/ excluding stm32_common and other non-family directories
-          CPU_FAMILIES=$(find src/port -mindepth 1 -maxdepth 1 -type d \
-            ! -name "stm32_common" \
-            -exec basename {} \; | \
+          # Find all CPU families by looking for directories containing port.c
+          CPU_FAMILIES=$(find src/port -mindepth 2 -maxdepth 2 -name "port.c" -type f \
+            -exec dirname {} \; | \
+            xargs -n1 basename | \
             sort | \
             jq -R -s -c 'split("\n") | map(select(length > 0))')
           
