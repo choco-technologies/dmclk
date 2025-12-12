@@ -2,6 +2,7 @@
 #define STM32_COMMON_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include "dmclk_port.h"
 
 /**
@@ -31,6 +32,8 @@ typedef struct {
     uint32_t pllm_max;
     uint32_t plln_min;
     uint32_t plln_max;
+    uint32_t pllp_min;
+    uint32_t pllp_max;
     const void *flash_latency_table;
     uint32_t flash_latency_count;
 } clock_limits_t;
@@ -67,7 +70,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
  * @return int 0 on success, non-zero on failure
  */
 int stm32_configure_flash_latency(uint32_t sysclk_freq,
-                                   uint32_t flash_base,
+                                   uintptr_t flash_base,
                                    const void *latency_table,
                                    uint32_t table_size);
 
@@ -80,7 +83,7 @@ int stm32_configure_flash_latency(uint32_t sysclk_freq,
  * 
  * @return int 0 on success, non-zero on timeout
  */
-int stm32_wait_clock_ready(uint32_t rcc_base, uint32_t ready_bit, uint32_t timeout);
+int stm32_wait_clock_ready(uintptr_t rcc_base, uint32_t ready_bit, uint32_t timeout);
 
 /**
  * @brief Switch system clock source
@@ -90,7 +93,7 @@ int stm32_wait_clock_ready(uint32_t rcc_base, uint32_t ready_bit, uint32_t timeo
  * 
  * @return int 0 on success, non-zero on failure
  */
-int stm32_switch_sysclk(uint32_t rcc_base, uint32_t source);
+int stm32_switch_sysclk(uintptr_t rcc_base, uint32_t source);
 
 /**
  * @brief Configure bus prescalers
@@ -101,7 +104,7 @@ int stm32_switch_sysclk(uint32_t rcc_base, uint32_t source);
  * 
  * @return int 0 on success, non-zero on failure
  */
-int stm32_configure_bus_prescalers(uint32_t rcc_base, 
+int stm32_configure_bus_prescalers(uintptr_t rcc_base, 
                                     uint32_t sysclk_freq,
                                     const clock_limits_t *limits);
 
@@ -113,6 +116,6 @@ int stm32_configure_bus_prescalers(uint32_t rcc_base,
  * 
  * @return uint32_t Current system clock frequency in Hz
  */
-uint32_t stm32_get_sysclk_freq(uint32_t rcc_base, uint32_t hsi_value);
+uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value);
 
 #endif // STM32_COMMON_H

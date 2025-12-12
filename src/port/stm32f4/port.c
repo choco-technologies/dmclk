@@ -21,6 +21,8 @@ static const clock_limits_t stm32f4_limits = {
     .pllm_max = STM32F4_PLLM_MAX,
     .plln_min = STM32F4_PLLN_MIN,
     .plln_max = STM32F4_PLLN_MAX,
+    .pllp_min = STM32F4_PLLP_MIN,
+    .pllp_max = STM32F4_PLLP_MAX,
     .flash_latency_table = stm32f4_flash_latency,
     .flash_latency_count = STM32F4_FLASH_LATENCY_COUNT,
 };

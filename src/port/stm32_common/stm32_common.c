@@ -95,7 +95,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
  * @brief Configure Flash latency based on system clock frequency
  */
 int stm32_configure_flash_latency(uint32_t sysclk_freq,
-                                   uint32_t flash_base,
+                                   uintptr_t flash_base,
                                    const void *latency_table,
                                    uint32_t table_size)
 {
@@ -132,7 +132,7 @@ int stm32_configure_flash_latency(uint32_t sysclk_freq,
 /**
  * @brief Wait for clock to be ready
  */
-int stm32_wait_clock_ready(uint32_t rcc_base, uint32_t ready_bit, uint32_t timeout)
+int stm32_wait_clock_ready(uintptr_t rcc_base, uint32_t ready_bit, uint32_t timeout)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)rcc_base;
     uint32_t counter = 0;
@@ -149,7 +149,7 @@ int stm32_wait_clock_ready(uint32_t rcc_base, uint32_t ready_bit, uint32_t timeo
 /**
  * @brief Switch system clock source
  */
-int stm32_switch_sysclk(uint32_t rcc_base, uint32_t source)
+int stm32_switch_sysclk(uintptr_t rcc_base, uint32_t source)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)rcc_base;
     uint32_t expected_sws;
@@ -177,7 +177,7 @@ int stm32_switch_sysclk(uint32_t rcc_base, uint32_t source)
 /**
  * @brief Configure bus prescalers
  */
-int stm32_configure_bus_prescalers(uint32_t rcc_base, 
+int stm32_configure_bus_prescalers(uintptr_t rcc_base, 
                                     uint32_t sysclk_freq,
                                     const clock_limits_t *limits)
 {
@@ -238,7 +238,7 @@ int stm32_configure_bus_prescalers(uint32_t rcc_base,
 /**
  * @brief Get current system clock frequency
  */
-uint32_t stm32_get_sysclk_freq(uint32_t rcc_base, uint32_t hsi_value)
+uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)rcc_base;
     uint32_t sysclk = 0;
