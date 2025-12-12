@@ -223,17 +223,17 @@ jobs:
           DMFC_DIR="$BUILD_DIR/dmfc"
           
           # Copy dmclk_port module files
-          cp $DMF_DIR/dmclk_port.dmf release_package_port/
-          cp $DMF_DIR/dmclk_port_version.txt release_package_port/
+          cp "$DMF_DIR/dmclk_port.dmf" release_package_port/
+          cp "$DMF_DIR/dmclk_port_version.txt" release_package_port/
           
           # Copy compressed module if it exists
-          if [ -f $DMFC_DIR/dmclk_port.dmfc ]; then
-            cp $DMFC_DIR/dmclk_port.dmfc release_package_port/
+          if [ -f "$DMFC_DIR/dmclk_port.dmfc" ]; then
+            cp "$DMFC_DIR/dmclk_port.dmfc" release_package_port/
           fi
           
           # Copy .dmd files if they exist
-          if [ -f $DMF_DIR/dmclk_port.dmd ]; then
-            cp $DMF_DIR/dmclk_port.dmd release_package_port/
+          if [ -f "$DMF_DIR/dmclk_port.dmd" ]; then
+            cp "$DMF_DIR/dmclk_port.dmd" release_package_port/
           fi
           
           # Copy header files
