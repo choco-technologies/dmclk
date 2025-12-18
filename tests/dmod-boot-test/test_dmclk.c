@@ -93,7 +93,7 @@ static void print_clock_info(dmdrvi_context_t clk_ctx, void* handle)
     // Read clock information as string
     char buffer[256];
     size_t bytes_read = dmclk_dmdrvi_read(clk_ctx, handle, buffer, sizeof(buffer) - 1);
-    if (bytes_read > 0)
+    if (bytes_read > 0 && bytes_read < sizeof(buffer))
     {
         buffer[bytes_read] = '\0';
         Dmod_Printf("Clock info string: %s\n", buffer);
@@ -142,12 +142,11 @@ int test_dmclk_main(int argc, char* argv[])
         dmclk_dmdrvi_ioctl(clk_ctx, handle, dmclk_ioctl_cmd_get_target_frequency, &target_freq) == 0 &&
         dmclk_dmdrvi_ioctl(clk_ctx, handle, dmclk_ioctl_cmd_get_tolerance, &tolerance) == 0)
     {
-        int64_t diff = (int64_t)actual_freq - (int64_t)target_freq;
-        if (diff < 0) diff = -diff;
+        uint64_t diff = (actual_freq > target_freq) ? (actual_freq - target_freq) : (target_freq - actual_freq);
         
         Dmod_Printf("\n--- Verification ---\n");
-        Dmod_Printf("Target: %u Hz, Actual: %u Hz, Difference: %d Hz, Tolerance: %u Hz\n",
-                   (unsigned int)target_freq, (unsigned int)actual_freq, (int)diff, (unsigned int)tolerance);
+        Dmod_Printf("Target: %u Hz, Actual: %u Hz, Difference: %llu Hz, Tolerance: %u Hz\n",
+                   (unsigned int)target_freq, (unsigned int)actual_freq, diff, (unsigned int)tolerance);
         
         if (diff <= tolerance)
         {
@@ -155,8 +154,8 @@ int test_dmclk_main(int argc, char* argv[])
         }
         else
         {
-            Dmod_Printf("✗ Clock is NOT within tolerance (difference: %d Hz > %u Hz)\n", 
-                       (int)diff, (unsigned int)tolerance);
+            Dmod_Printf("✗ Clock is NOT within tolerance (difference: %llu Hz > %u Hz)\n", 
+                       diff, (unsigned int)tolerance);
         }
     }
     
