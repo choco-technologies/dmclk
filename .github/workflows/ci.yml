@@ -47,7 +47,8 @@ jobs:
           mkdir -p build
           cd build
           cmake .. -DDMOD_MODE=DMOD_MODULE
-          cmake --build .
+          # Build only the main dmclk module (dmclk_port is built separately with correct CPU family)
+          cmake --build . --target dmclk
       
       - name: Verify module files
         run: |
