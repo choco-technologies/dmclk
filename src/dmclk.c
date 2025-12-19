@@ -277,17 +277,22 @@ int dmod_deinit(void)
  * @brief Create a new DMDRVI context
  * 
  * @param config Pointer to configuration data
- * @param dev_num Pointer to device number structure
+ * @param dev_num Output pointer to device number structure - driver fills in major, minor, and flags
  * 
  * @return dmdrvi_context_t New DMDRVI context
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, dmdrvi_context_t, _create, ( dmini_context_t config, const dmdrvi_dev_num_t* dev_num ))
+dmod_dmdrvi_dif_api_declaration(1.0, dmclk, dmdrvi_context_t, _create, ( dmini_context_t config, dmdrvi_dev_num_t* dev_num ))
 {
     if(config == NULL || dev_num == NULL)
     {
         DMOD_LOG_ERROR("Invalid parameters to dmclk_dmdrvi_create\n");
         return NULL;
     }
+
+    // Set device numbering - dmclk uses no numbering (device path: /dev/dmclk)
+    dev_num->major = 0;
+    dev_num->minor = 0;
+    dev_num->flags = DMDRVI_NUM_NONE;
 
     dmdrvi_context_t context = Dmod_Malloc(sizeof(struct dmdrvi_context));
     if (context != NULL)
