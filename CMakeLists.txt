@@ -101,11 +101,6 @@ if(BUILD_DMCLK_PORT)
     target_link_libraries(${DMOD_MODULE_NAME} 
         dmclk_port_if
     )
-else()
-    # When not building dmclk_port, still need access to port headers
-    target_include_directories(${DMOD_MODULE_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
 endif()
 
 target_include_directories(${DMOD_MODULE_NAME} PRIVATE
