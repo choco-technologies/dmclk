@@ -99,8 +99,8 @@ jobs:
           # First run cmake to fetch dependencies with version from tag
           cmake .. -DDMOD_TOOLS_NAME=arch/${{ matrix.arch_name }} -DDMOD_MODULE_VERSION="${{ steps.get_version.outputs.version }}"
           
-          # Build the modules
-          cmake --build .
+          # Build only the main dmclk module (dmclk_port is built separately with correct CPU family)
+          cmake --build . --target dmclk
           
           echo "Build completed for ${{ matrix.arch_name }}"
           ls -la dmf/
