@@ -125,7 +125,7 @@ jobs:
           zip -r ../dmclk-${{ github.event.release.tag_name }}-${{ matrix.cpu_family }}.zip .
           cd ..
           echo "Created archive:"
-          ls -lh dmclk_port-*.zip
+          ls -lh dmclk-*.zip
       
       - name: Upload dmclk artifact
         uses: actions/upload-artifact@v4.4.3
