@@ -9,6 +9,11 @@ cmake_minimum_required(VERSION 3.18)
 set(DMCLK_MCU_SERIES "stm32f7" CACHE STRING "Target MCU series")
 
 # ======================================================================
+#               Include target architecture configuration
+# ======================================================================
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/port/${DMCLK_MCU_SERIES}/config.cmake)
+
+# ======================================================================
 #               For VS Code
 # ======================================================================
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

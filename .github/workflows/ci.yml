@@ -30,35 +30,8 @@ jobs:
           echo "Found CPU families: $CPU_FAMILIES"
           echo "cpu_families=$CPU_FAMILIES" >> $GITHUB_OUTPUT
 
-  build-and-test:
-    name: Build and Test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    container:
-      image: chocotechnologies/dmod:1.0.4
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Build dmclk project
-        run: |
-          mkdir -p build
-          cd build
-          cmake .. -DDMOD_MODE=DMOD_MODULE
-          cmake --build .
-      
-      - name: Verify module files
-        run: |
-          echo "Checking for module files..."
-          ls -lh build/dmf/
-          test -f build/dmf/dmclk.dmf
-          test -f build/dmf/dmclk_version.txt
-          echo "Module files present"
-
-  build-dmclk-port:
-    name: Build dmclk_port for ${{ matrix.cpu_family }}
+  build-dmclk:
+    name: Build dmclk for ${{ matrix.cpu_family }}
     needs: discover-cpu-families
     runs-on: ubuntu-latest
     permissions:
@@ -66,12 +39,6 @@ jobs:
     strategy:
       matrix:
         cpu_family: ${{ fromJson(needs.discover-cpu-families.outputs.cpu_families) }}
-        include:
-          # Map CPU families to their typical architectures
-          - cpu_family: stm32f4
-            arch_name: armv7/cortex-m4
-          - cpu_family: stm32f7
-            arch_name: armv7/cortex-m7
     
     container:
       image: chocotechnologies/dmod:1.0.4
@@ -80,21 +47,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Build dmclk_port for ${{ matrix.cpu_family }}
+      - name: Build dmclk for ${{ matrix.cpu_family }}
         run: |
           set -e
           CPU_FAMILY="${{ matrix.cpu_family }}"
           mkdir -p build_$CPU_FAMILY
           cd build_$CPU_FAMILY
           
-          # Build dmclk_port with specific CPU family
-          cmake .. \
-            -DDMOD_MODE=DMOD_MODULE \
-            -DDMOD_TOOLS_NAME=arch/${{ matrix.arch_name }} \
-            -DDMCLK_MCU_SERIES="${CPU_FAMILY}"
-          
-          # Build only the dmclk_port module
-          cmake --build . --target dmclk_port
+          cmake .. -DDMCLK_MCU_SERIES="${CPU_FAMILY}"
+          cmake --build . 
           
           echo "Build completed for CPU family: ${CPU_FAMILY}"
           ls -lh dmf/
