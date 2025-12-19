@@ -2,5 +2,5 @@
 $include https://github.com/choco-technologies/dmclk/releases/download/vlatest/versions.dmm
 
 # Module entries with version placeholder - will be expanded by $version-available
-dmclk https://github.com/choco-technologies/dmclk/releases/download/v<version>/dmclk-v<version>-<arch_name>.zip
+dmclk      https://github.com/choco-technologies/dmclk/releases/download/v<version>/dmclk-v<version>-<cpu_family>.zip
 dmclk_port https://github.com/choco-technologies/dmclk/releases/download/v<version>/dmclk-v<version>-<cpu_family>.zip

@@ -5,39 +5,6 @@ on:
     types: [created]
 
 jobs:
-  discover-architectures:
-    name: Discover Architectures
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    container:
-      image: chocotechnologies/dmod:1.0.4
-    outputs:
-      architectures: ${{ steps.list-archs.outputs.architectures }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Fetch dmod to discover architectures
-        run: |
-          mkdir -p build_discovery
-          cd build_discovery
-          cmake .. -DDMOD_MODE=DMOD_MODULE
-      
-      - name: List available architectures
-        id: list-archs
-        run: |
-          DMOD_SRC_DIR=$(find build_discovery -path "*/_deps/dmod-src" -type d | head -1)
-          
-          # create JSON array
-          ARCHS=$(find ${DMOD_SRC_DIR}/configs/arch -name "tools-cfg.cmake" | \
-            sed "s|${DMOD_SRC_DIR}/configs/arch/||g" | \
-            sed 's|/tools-cfg.cmake||g' | \
-            jq -R -s -c 'split("\n") | map(select(length > 0))')
-          
-          echo "Found architectures: $ARCHS"
-          echo "architectures=$ARCHS" >> $GITHUB_OUTPUT
-
   discover-cpu-families:
     name: Discover CPU Families
     runs-on: ubuntu-latest
@@ -61,104 +28,7 @@ jobs:
           echo "Found CPU families: $CPU_FAMILIES"
           echo "cpu_families=$CPU_FAMILIES" >> $GITHUB_OUTPUT
 
-  build-release:
-    name: Build Release for ${{ matrix.arch_name }}
-    needs: discover-architectures
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    strategy:
-      matrix:
-        arch_name: ${{ fromJson(needs.discover-architectures.outputs.architectures) }}
-    
-    container:
-      image: chocotechnologies/dmod:1.0.4
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Extract version from tag
-        id: get_version
-        run: |
-          # Extract version from tag (e.g., v1.2 -> 1.2)
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"  # Remove 'v' prefix if present
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION"
-      
-      - name: Build dmclk for ${{ matrix.arch_name }}
-        run: |
-          set -e
-          ARCH_DIR_NAME=$(echo "${{ matrix.arch_name }}" | sed 's|/|-|')
-          echo "ARCH_DIR_NAME=$ARCH_DIR_NAME" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME=release-$ARCH_DIR_NAME" >> $GITHUB_ENV
-          mkdir -p build_$ARCH_DIR_NAME
-          cd build_$ARCH_DIR_NAME
-          
-          # First run cmake to fetch dependencies with version from tag
-          cmake .. -DDMOD_TOOLS_NAME=arch/${{ matrix.arch_name }} -DDMOD_MODULE_VERSION="${{ steps.get_version.outputs.version }}"
-          
-          # Build the modules
-          cmake --build .
-          
-          echo "Build completed for ${{ matrix.arch_name }}"
-          ls -la dmf/
-          ls -la dmfc/
-      
-      - name: Prepare release package
-        run: |
-          set -e
-          mkdir -p release_package
-          BUILD_DIR=build_$ARCH_DIR_NAME
-          DMF_DIR="$BUILD_DIR/dmf"
-          DMFC_DIR="$BUILD_DIR/dmfc"
-          
-          cp $DMF_DIR/dmclk.dmf release_package/
-          cp $DMF_DIR/dmclk_version.txt release_package/
-          cp $DMFC_DIR/dmclk.dmfc release_package/ 2>/dev/null || true
-
-          # Copy .dmd files if they exist
-          if [ -f $DMF_DIR/dmclk.dmd ]; then
-            cp $DMF_DIR/dmclk.dmd release_package/
-          fi
-          
-          # Copy .dmr resource files
-          cp dmclk.dmr release_package/
-          
-          # Copy header files
-          mkdir -p release_package/include
-          cp include/dmclk.h release_package/include/
-          cp $BUILD_DIR/dmclk_defs.h release_package/include/
-          
-          # Copy documentation
-          mkdir -p release_package/docs
-          cp -r docs/* release_package/docs/
-          cp README.md release_package/
-          cp LICENSE release_package/
-          
-          # Create release notes file from GitHub release
-          echo "${{ github.event.release.body }}" > release_package/RELEASE_NOTES.txt
-          
-          echo "Package contents:"
-          ls -la release_package/
-      
-      - name: Create release archive
-        run: |
-          cd release_package
-          zip -r ../dmclk-${{ github.event.release.tag_name }}-$ARCH_DIR_NAME.zip .
-          cd ..
-          echo "Created archive:"
-          ls -lh dmclk-*.zip
-      
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4.4.3
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: dmclk-${{ github.event.release.tag_name }}-*.zip
-          retention-days: 1
-
-  build-dmclk-port:
+  build-dmclk:
     name: Build dmclk_port for ${{ matrix.cpu_family }}
     needs: discover-cpu-families
     runs-on: ubuntu-latest
@@ -167,12 +37,6 @@ jobs:
     strategy:
       matrix:
         cpu_family: ${{ fromJson(needs.discover-cpu-families.outputs.cpu_families) }}
-        include:
-          # Map CPU families to their typical architectures
-          - cpu_family: stm32f4
-            arch_name: armv7/cortex-m4
-          - cpu_family: stm32f7
-            arch_name: armv7/cortex-m7
     
     container:
       image: chocotechnologies/dmod:1.0.4
@@ -190,7 +54,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
       
-      - name: Build dmclk_port for ${{ matrix.cpu_family }}
+      - name: Build dmclk for ${{ matrix.cpu_family }}
         run: |
           set -e
           CPU_FAMILY="${{ matrix.cpu_family }}"
@@ -200,20 +64,17 @@ jobs:
           mkdir -p build_$BUILD_NAME
           cd build_$BUILD_NAME
           
-          # Build dmclk_port with specific CPU family and architecture
           cmake .. \
-            -DDMOD_TOOLS_NAME=arch/${{ matrix.arch_name }} \
             -DDMOD_MODULE_VERSION="${{ steps.get_version.outputs.version }}" \
             -DDMCLK_MCU_SERIES="${CPU_FAMILY}"
           
-          # Build only the dmclk_port module
-          cmake --build . --target dmclk_port
+          cmake --build . 
           
           echo "Build completed for CPU family: ${CPU_FAMILY} on arch: ${{ matrix.arch_name }}"
           ls -la dmf/ || echo "No dmf directory"
           ls -la dmfc/ || echo "No dmfc directory"
       
-      - name: Prepare dmclk_port release package
+      - name: Prepare dmclk release package
         run: |
           set -e
           mkdir -p release_package_port
@@ -221,16 +82,24 @@ jobs:
           DMF_DIR="$BUILD_DIR/dmf"
           DMFC_DIR="$BUILD_DIR/dmfc"
           
-          # Copy dmclk_port module files
+          cp "$DMF_DIR/dmclk.dmf" release_package_port/
+          cp "$DMF_DIR/dmclk_version.txt" release_package_port/
+
           cp "$DMF_DIR/dmclk_port.dmf" release_package_port/
           cp "$DMF_DIR/dmclk_port_version.txt" release_package_port/
           
-          # Copy compressed module if it exists
+          if [ -f "$DMFC_DIR/dmclk.dmfc" ]; then
+            cp "$DMFC_DIR/dmclk.dmfc" release_package_port/
+          fi
+
           if [ -f "$DMFC_DIR/dmclk_port.dmfc" ]; then
             cp "$DMFC_DIR/dmclk_port.dmfc" release_package_port/
           fi
           
-          # Copy .dmd files if they exist
+          if [ -f "$DMF_DIR/dmclk.dmd" ]; then
+            cp "$DMF_DIR/dmclk.dmd" release_package_port/
+          fi
+
           if [ -f "$DMF_DIR/dmclk_port.dmd" ]; then
             cp "$DMF_DIR/dmclk_port.dmd" release_package_port/
           fi
@@ -238,6 +107,8 @@ jobs:
           # Copy header files
           mkdir -p release_package_port/include
           cp include/dmclk_port.h release_package_port/include/
+          cp $BUILD_DIR/dmclk_defs.h release_package_port/include/
+          cp $BUILD_DIR/src/port/dmclk_port_defs.h release_package_port/include/
           
           # Copy license
           cp LICENSE release_package_port/
@@ -248,24 +119,24 @@ jobs:
           echo "Package contents:"
           ls -la release_package_port/
       
-      - name: Create dmclk_port release archive
+      - name: Create dmclk release archive
         run: |
           cd release_package_port
-          zip -r ../dmclk_port-${{ github.event.release.tag_name }}-${{ matrix.cpu_family }}.zip .
+          zip -r ../dmclk-${{ github.event.release.tag_name }}-${{ matrix.cpu_family }}.zip .
           cd ..
           echo "Created archive:"
           ls -lh dmclk_port-*.zip
       
-      - name: Upload dmclk_port artifact
+      - name: Upload dmclk artifact
         uses: actions/upload-artifact@v4.4.3
         with:
           name: ${{ env.ARTIFACT_NAME }}
-          path: dmclk_port-${{ github.event.release.tag_name }}-*.zip
+          path: dmclk-${{ github.event.release.tag_name }}-*.zip
           retention-days: 1
 
   generate-versions-manifest:
     name: Generate versions.dmm
-    needs: [discover-architectures, discover-cpu-families]
+    needs: [discover-cpu-families]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -314,7 +185,7 @@ jobs:
 
   upload-release-assets:
     name: Upload Release Assets
-    needs: [build-release, build-dmclk-port, generate-versions-manifest]
+    needs: [build-dmclk, generate-versions-manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: write
