@@ -204,7 +204,8 @@ jobs:
           cmake .. \
             -DDMOD_TOOLS_NAME=arch/${{ matrix.arch_name }} \
             -DDMOD_MODULE_VERSION="${{ steps.get_version.outputs.version }}" \
-            -DDMCLK_MCU_SERIES="${CPU_FAMILY}"
+            -DDMCLK_MCU_SERIES="${CPU_FAMILY}" \
+            -DBUILD_DMCLK_PORT=ON
           
           # Build only the dmclk_port module
           cmake --build . --target dmclk_port

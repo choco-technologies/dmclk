@@ -7,6 +7,7 @@ cmake_minimum_required(VERSION 3.18)
 #               Parameters
 # ======================================================================
 set(DMCLK_MCU_SERIES "stm32f7" CACHE STRING "Target MCU series")
+option(BUILD_DMCLK_PORT "Build dmclk_port module (requires matching CPU architecture)" OFF)
 
 # ======================================================================
 #               For VS Code
@@ -59,7 +60,10 @@ dmod_setup_external_module()
 # ======================================================================
 #               Subdirectories
 # ======================================================================
-add_subdirectory(src/port)
+# Only build dmclk_port when explicitly requested to avoid architecture mismatches
+if(BUILD_DMCLK_PORT)
+    add_subdirectory(src/port)
+endif()
 
 # ======================================================================
 #               dmclk Module Configuration
@@ -92,9 +96,17 @@ dmod_link_modules(${DMOD_MODULE_NAME}
     dmini
 )
 
-target_link_libraries(${DMOD_MODULE_NAME} 
-    dmclk_port_if
-)
+# Only link dmclk_port_if when building the port module
+if(BUILD_DMCLK_PORT)
+    target_link_libraries(${DMOD_MODULE_NAME} 
+        dmclk_port_if
+    )
+else()
+    # When not building dmclk_port, still need access to port headers
+    target_include_directories(${DMOD_MODULE_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+endif()
 
 target_include_directories(${DMOD_MODULE_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
