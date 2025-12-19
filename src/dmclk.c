@@ -371,10 +371,11 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void, _close, ( dmdrvi_context_t con
  */
 dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _read, ( dmdrvi_context_t context, void* handle, void* buffer, size_t size ))
 {
-    Dmod_SnPrintf(buffer, size, "frequency=%lu;source=%s;oscillator_frequency=%lu",
+    int written = Dmod_SnPrintf(buffer, size, "frequency=%lu;source=%s;oscillator_frequency=%lu",
                   context->current_frequency,
                   source_to_string(context->config.source),
                   context->config.oscillator_frequency);
+    return (written > 0) ? (size_t)written : 0;
 }
 
 /**
