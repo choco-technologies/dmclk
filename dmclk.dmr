@@ -25,6 +25,10 @@ readme=./README.md => ${destination}/${module}/README.md
 # Include directory with all headers (dmclk.h and dmclk_defs.h)
 inc=./include => ${destination}/${module}/include
 
+# === Configuration Files ===
+# Configuration directory with board and MCU specific configs
+configs=./configs => ${destination}/${module}/configs
+
 # === License ===
 # License file
 license=./LICENSE => ${destination}/${module}/LICENSE
