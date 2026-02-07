@@ -23,6 +23,18 @@ Using `dmf-get` from the DMOD release package:
 dmf-get install dmclk
 ```
 
+Or install with a pre-configured setup for your board:
+
+```bash
+# Create a dependencies file (deps.dmd)
+echo "dmclk@latest board/stm32f746g-disco.ini" > deps.dmd
+
+# Install with configuration
+dmf-get -d deps.dmd --config-dir ./config
+```
+
+The module includes ready-to-use configuration files for many popular STM32 boards and MCUs. See [`configs/README.md`](configs/README.md) for the complete list.
+
 ### Basic Usage
 
 1. **Create a configuration file** (`config.ini`):
@@ -108,6 +120,21 @@ dmf-man dmclk port     # Port implementation guide
 | Other STM32 | 🔧 In Progress | Easy to add using STM32 common code |
 | Other MCUs | 📋 Planned | Contributions welcome |
 
+## Pre-configured Boards and MCUs
+
+The module includes ready-to-use configuration files for popular development boards and microcontrollers:
+
+**Development Boards:**
+- STM32F4DISCOVERY, STM32F429I-DISCOVERY
+- NUCLEO-F401RE, NUCLEO-F411RE, NUCLEO-F446RE
+- STM32F746G-DISCO, NUCLEO-F767ZI, STM32F769I-DISCOVERY
+
+**Microcontrollers:**
+- STM32F4 series: F401RE, F405RG, F407VG, F411RE, F429ZI, F439ZI, F446RE, F469NI
+- STM32F7 series: F722RE, F746ZG, F767ZI, F769NI
+
+For a complete list and usage instructions, see [`configs/README.md`](configs/README.md).
+
 ## Configuration Examples
 
 ### Internal Clock (16 MHz)
@@ -145,6 +172,9 @@ oscillator_frequency=8000000
 
 ```
 dmclk/
+├── configs/           # Pre-configured board and MCU configurations
+│   ├── board/        # Board-specific configurations
+│   └── mcu/          # MCU-specific configurations
 ├── docs/              # Documentation (markdown format)
 ├── examples/          # Example configurations
 ├── include/           # Public headers
