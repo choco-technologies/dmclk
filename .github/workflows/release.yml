@@ -110,6 +110,9 @@ jobs:
           cp $BUILD_DIR/dmclk_defs.h release_package_port/include/
           cp $BUILD_DIR/src/port/dmclk_port_defs.h release_package_port/include/
           
+          # Copy configuration files
+          cp -r configs release_package_port/
+          
           # Copy license
           cp LICENSE release_package_port/
           
