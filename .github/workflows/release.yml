@@ -116,6 +116,9 @@ jobs:
           # Copy license
           cp LICENSE release_package_port/
           
+          # Copy DMR resource file
+          cp dmclk.dmr release_package_port/
+          
           # Create release notes file from GitHub release
           echo "${{ github.event.release.body }}" > release_package_port/RELEASE_NOTES.txt
           
