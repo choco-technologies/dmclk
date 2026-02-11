@@ -15,8 +15,12 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
         return -1;
     }
 
+    /* Cast 64-bit frequencies to 32-bit to avoid 64-bit division on ARM */
+    uint32_t target_freq_32 = (uint32_t)target_freq;
+    uint32_t tolerance_32 = (uint32_t)tolerance;
+
     /* Check if target frequency is within limits */
-    if (target_freq > limits->max_sysclk) {
+    if (target_freq_32 > limits->max_sysclk) {
         return -1;
     }
 
@@ -36,7 +40,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
         /* Try different PLLP values (only 2, 4, 6, 8 are valid) */
         for (uint32_t pllp = limits->pllp_min; pllp <= limits->pllp_max; pllp += 2) {
             /* Calculate required PLLN */
-            uint32_t plln = (target_freq * pllp) / pll_in;
+            uint32_t plln = (target_freq_32 * pllp) / pll_in;
             
             /* Check if PLLN is within valid range */
             if (plln < limits->plln_min || plln > limits->plln_max) {
@@ -56,14 +60,14 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
             
             /* Calculate error */
             uint32_t error;
-            if (actual_freq > target_freq) {
-                error = actual_freq - target_freq;
+            if (actual_freq > target_freq_32) {
+                error = actual_freq - target_freq_32;
             } else {
-                error = target_freq - actual_freq;
+                error = target_freq_32 - actual_freq;
             }
 
             /* Check if this is the best configuration so far */
-            if (error < best_error && error <= tolerance) {
+            if (error < best_error && error <= tolerance_32) {
                 best_error = error;
                 best_config.pllm = pllm;
                 best_config.plln = plln;

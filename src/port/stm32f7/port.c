@@ -1,3 +1,4 @@
+#define DMOD_ENABLE_REGISTRATION    ON
 #include "dmclk_port.h"
 #include "../stm32_common/stm32_common.h"
 #include "port/stm32_common_regs.h"
@@ -59,7 +60,7 @@ int dmod_deinit(void)
  * 
  * @return int 0 on success, non-zero on failure
  */
-int dmclk_port_configure_internal(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance)
+dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance) )
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
     pll_config_t pll_config;
@@ -126,7 +127,7 @@ int dmclk_port_configure_internal(dmclk_frequency_t target_freq, dmclk_frequency
  * 
  * @return int 0 on success, non-zero on failure
  */
-int dmclk_port_configure_external(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq)
+dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
     pll_config_t pll_config;

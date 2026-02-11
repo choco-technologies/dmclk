@@ -169,7 +169,12 @@ static int configure(dmdrvi_context_t context)
     }
     if (ret == 0)
     {
+        DMOD_LOG_INFO("Clock configured successfully with source %s\n", source_to_string(context->config.source));
         context->current_frequency = dmclk_port_get_current_frequency();
+    }
+    else 
+    {
+        DMOD_LOG_ERROR("Failed to configure clock with source %s\n", source_to_string(context->config.source));
     }
     return ret;
 }
@@ -302,12 +307,13 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, dmdrvi_context_t, _create, ( dmini_c
         if (read_config_parameters(context, config) != 0
          || configure(context) != 0)
         {
+            DMOD_LOG_ERROR("Failed to create DMDRVI context with provided configuration\n");
             Dmod_Free(context);
             return NULL;
         }
         else 
         {
-            DMOD_LOG_INFO("Clock configured to %lu Hz\n", context->current_frequency);
+            DMOD_LOG_INFO("Clock configured to %u Hz\n", context->current_frequency);
         }
     }
     return context;

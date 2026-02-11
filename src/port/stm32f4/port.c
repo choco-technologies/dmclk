@@ -1,3 +1,4 @@
+#define DMOD_ENABLE_REGISTRATION    ON
 #include "dmclk_port.h"
 #include "../stm32_common/stm32_common.h"
 #include "port/stm32_common_regs.h"
@@ -59,7 +60,7 @@ int dmod_deinit(void)
  * 
  * @return int 0 on success, non-zero on failure
  */
-int dmclk_port_configure_internal(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance)
+dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance) )
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
     pll_config_t pll_config;
@@ -126,7 +127,7 @@ int dmclk_port_configure_internal(dmclk_frequency_t target_freq, dmclk_frequency
  * 
  * @return int 0 on success, non-zero on failure
  */
-int dmclk_port_configure_external(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq)
+dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
     pll_config_t pll_config;
@@ -195,7 +196,7 @@ int dmclk_port_configure_external(dmclk_frequency_t target_freq, dmclk_frequency
  * 
  * @return int 0 on success, non-zero on failure
  */
-int dmclk_port_configure_hibernatation(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq)
+dmod_dmclk_port_api_declaration(1.0, int, _configure_hibernatation, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
 {
     /* LSI is typically used for hibernation/low-power modes
      * For STM32F4, LSI runs at approximately 32 kHz
@@ -214,7 +215,7 @@ int dmclk_port_configure_hibernatation(dmclk_frequency_t target_freq, dmclk_freq
  * 
  * @param time_us Time to delay in microseconds
  */
-void dmclk_port_delay_us(dmclk_time_us_t time_us)
+dmod_dmclk_port_api_declaration(1.0, void, _delay_us, ( dmclk_time_us_t time_us) )
 {
     /* Simple delay loop
      * This is a very basic implementation - cycles depend on sysclk
@@ -236,7 +237,7 @@ void dmclk_port_delay_us(dmclk_time_us_t time_us)
  * 
  * @return dmclk_frequency_t Current frequency in Hz
  */
-dmclk_frequency_t dmclk_port_get_current_frequency(void)
+dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, ( void ) )
 {
     /* Return cached value or calculate from registers */
     uint32_t freq = stm32_get_sysclk_freq(STM32F4_RCC_BASE, HSI_VALUE);
