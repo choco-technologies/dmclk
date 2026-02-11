@@ -313,7 +313,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, dmdrvi_context_t, _create, ( dmini_c
         }
         else 
         {
-            DMOD_LOG_INFO("Clock configured to %u Hz\n", context->current_frequency);
+            DMOD_LOG_INFO("Clock configured to %llu Hz\n", context->current_frequency);
         }
     }
     return context;
@@ -382,7 +382,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void, _close, ( dmdrvi_context_t con
  */
 dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _read, ( dmdrvi_context_t context, void* handle, void* buffer, size_t size ))
 {
-    int written = Dmod_SnPrintf(buffer, size, "frequency=%lu;source=%s;oscillator_frequency=%lu",
+    int written = Dmod_SnPrintf(buffer, size, "frequency=%llu;source=%s;oscillator_frequency=%llu",
                   context->current_frequency,
                   source_to_string(context->config.source),
                   context->config.oscillator_frequency);
@@ -438,7 +438,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _ioctl, ( dmdrvi_context_t cont
         ret = configure(context);
         if (ret == 0)
         {
-            DMOD_LOG_INFO("Clock reconfigured to %lu Hz\n", context->current_frequency);
+            DMOD_LOG_INFO("Clock reconfigured to %llu Hz\n", context->current_frequency);
         }
     }
     else if(arg == NULL)  
@@ -463,7 +463,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _ioctl, ( dmdrvi_context_t cont
                 ret = configure(context);
                 if (ret == 0)
                 {
-                    DMOD_LOG_INFO("Clock reconfigured to %lu Hz\n", context->current_frequency);
+                    DMOD_LOG_INFO("Clock reconfigured to %llu Hz\n", context->current_frequency);
                 }
             }
         }
