@@ -50,6 +50,7 @@ typedef struct {
  * @param source_freq PLL source frequency (HSI or HSE) in Hz
  * @param limits Clock configuration limits
  * @param config Output PLL configuration
+ * @param actual_freq Output actual frequency that will be achieved (can be NULL if not needed)
  * 
  * @return int 0 on success, non-zero on failure
  */
@@ -57,7 +58,8 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
                                 dmclk_frequency_t tolerance,
                                 uint32_t source_freq,
                                 const clock_limits_t *limits,
-                                pll_config_t *config);
+                                pll_config_t *config,
+                                uint32_t *actual_freq);
 
 /**
  * @brief Configure Flash latency based on system clock frequency
