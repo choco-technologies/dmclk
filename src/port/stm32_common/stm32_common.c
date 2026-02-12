@@ -9,7 +9,8 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
                                 dmclk_frequency_t tolerance,
                                 uint32_t source_freq,
                                 const clock_limits_t *limits,
-                                pll_config_t *config)
+                                pll_config_t *config,
+                                uint32_t *actual_freq)
 {
     if (config == NULL || limits == NULL) {
         return -1;
@@ -25,6 +26,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
     }
 
     uint32_t best_error = 0xFFFFFFFFU;
+    uint32_t best_actual_freq = 0;
     pll_config_t best_config = {0};
     int found = 0;
 
@@ -56,19 +58,20 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
             }
 
             /* Calculate actual output frequency */
-            uint32_t actual_freq = vco / pllp;
+            uint32_t calc_actual_freq = vco / pllp;
             
             /* Calculate error */
             uint32_t error;
-            if (actual_freq > target_freq_32) {
-                error = actual_freq - target_freq_32;
+            if (calc_actual_freq > target_freq_32) {
+                error = calc_actual_freq - target_freq_32;
             } else {
-                error = target_freq_32 - actual_freq;
+                error = target_freq_32 - calc_actual_freq;
             }
 
             /* Check if this is the best configuration so far */
             if (error < best_error && error <= tolerance_32) {
                 best_error = error;
+                best_actual_freq = calc_actual_freq;
                 best_config.pllm = pllm;
                 best_config.plln = plln;
                 best_config.pllp = pllp;
@@ -92,6 +95,9 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
     }
 
     *config = best_config;
+    if (actual_freq != NULL) {
+        *actual_freq = best_actual_freq;
+    }
     return 0;
 }
 
@@ -254,7 +260,7 @@ uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value)
             break;
             
         case 1: /* HSE */
-            /* Would need to know HSE value, return 0 for now */
+            /* Note: HSE value must be stored by port implementation in current_hse_freq */
             sysclk = 0;
             break;
             
@@ -271,7 +277,7 @@ uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value)
             if (pllsrc == 0) {
                 pll_input = hsi_value;
             } else {
-                /* HSE - would need to know HSE value */
+                /* HSE - Note: HSE value must be stored by port implementation in current_hse_freq */
                 pll_input = 0;
             }
             

@@ -64,6 +64,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
     pll_config_t pll_config;
+    uint32_t actual_freq = 0;
     
     /* Enable HSI if not already enabled */
     RCC->CR |= RCC_CR_HSION;
@@ -73,12 +74,12 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency
 
     /* Calculate PLL configuration */
     if (stm32_calculate_pll_config(target_freq, tolerance, HSI_VALUE, 
-                                    &stm32f4_limits, &pll_config) != 0) {
+                                    &stm32f4_limits, &pll_config, &actual_freq) != 0) {
         return -1;
     }
 
     /* Configure Flash latency */
-    if (stm32_configure_flash_latency(target_freq, STM32F4_FLASH_BASE,
+    if (stm32_configure_flash_latency(actual_freq, STM32F4_FLASH_BASE,
                                       stm32f4_flash_latency, STM32F4_FLASH_LATENCY_COUNT) != 0) {
         return -1;
     }
@@ -105,7 +106,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency
     }
 
     /* Configure bus prescalers */
-    if (stm32_configure_bus_prescalers(STM32F4_RCC_BASE, target_freq, &stm32f4_limits) != 0) {
+    if (stm32_configure_bus_prescalers(STM32F4_RCC_BASE, actual_freq, &stm32f4_limits) != 0) {
         return -1;
     }
 
@@ -114,7 +115,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency
         return -1;
     }
 
-    current_sysclk = target_freq;
+    current_sysclk = actual_freq;
     return 0;
 }
 
@@ -131,6 +132,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
     pll_config_t pll_config;
+    uint32_t actual_freq = 0;
     
     current_hse_freq = (uint32_t)oscillator_freq;
 
@@ -142,12 +144,12 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency
 
     /* Calculate PLL configuration */
     if (stm32_calculate_pll_config(target_freq, tolerance, (uint32_t)oscillator_freq, 
-                                    &stm32f4_limits, &pll_config) != 0) {
+                                    &stm32f4_limits, &pll_config, &actual_freq) != 0) {
         return -1;
     }
 
     /* Configure Flash latency */
-    if (stm32_configure_flash_latency(target_freq, STM32F4_FLASH_BASE,
+    if (stm32_configure_flash_latency(actual_freq, STM32F4_FLASH_BASE,
                                       stm32f4_flash_latency, STM32F4_FLASH_LATENCY_COUNT) != 0) {
         return -1;
     }
@@ -174,7 +176,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency
     }
 
     /* Configure bus prescalers */
-    if (stm32_configure_bus_prescalers(STM32F4_RCC_BASE, target_freq, &stm32f4_limits) != 0) {
+    if (stm32_configure_bus_prescalers(STM32F4_RCC_BASE, actual_freq, &stm32f4_limits) != 0) {
         return -1;
     }
 
@@ -183,7 +185,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency
         return -1;
     }
 
-    current_sysclk = target_freq;
+    current_sysclk = actual_freq;
     return 0;
 }
 
