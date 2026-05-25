@@ -45,14 +45,14 @@ set(DMOD_BUILD_EXAMPLES OFF CACHE BOOL "Build examples")
 set(DMOD_BUILD_TOOLS OFF CACHE BOOL "Build tools")
 set(DMOD_BUILD_TEMPLATES OFF CACHE BOOL "Build templates")
 
+project(dmclk
+VERSION ${DMOD_MODULE_VERSION}
+DESCRIPTION "DMOD Driver Interface Module"
+LANGUAGES C CXX)
+set(DMOD_DIR ${dmod_SOURCE_DIR} CACHE PATH "DMOD source directory")
+
 FetchContent_MakeAvailable(dmod)
 
-project(dmclk
-    VERSION ${DMOD_MODULE_VERSION}
-    DESCRIPTION "DMOD Driver Interface Module"
-    LANGUAGES C CXX)
-set(DMOD_DIR ${dmod_SOURCE_DIR} CACHE PATH "DMOD source directory")
-    
 # ======================================================================
 #               Import dmod functions and macros
 # ======================================================================
