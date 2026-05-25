@@ -49,9 +49,10 @@ project(dmclk
 VERSION ${DMOD_MODULE_VERSION}
 DESCRIPTION "DMOD Driver Interface Module"
 LANGUAGES C CXX)
+FetchContent_MakeAvailable(dmod)
+
 set(DMOD_DIR ${dmod_SOURCE_DIR} CACHE PATH "DMOD source directory")
 
-FetchContent_MakeAvailable(dmod)
 
 # ======================================================================
 #               Import dmod functions and macros
