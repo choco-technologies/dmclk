@@ -371,22 +371,31 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void, _close, ( dmdrvi_context_t con
  * @brief Read from the device
  * 
  * The data is returned in the format:
- * "frequency=<current_frequency>;source=<source_string>;oscillator_frequency=<oscillator_frequency
+ * "frequency=<current_frequency>;source=<source_string>;oscillator_frequency=<oscillator_frequency>"
  * 
  * @param context DMDRVI context
  * @param handle Device handle
  * @param buffer Buffer to read data into
  * @param size Size of the buffer
+ * @param offset Byte offset from the beginning of the device data to read from
  * 
  * @return size_t Number of bytes read
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _read, ( dmdrvi_context_t context, void* handle, void* buffer, size_t size ))
+dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _read, ( dmdrvi_context_t context, void* handle, void* buffer, size_t size, uint32_t offset ))
 {
-    int written = Dmod_SnPrintf(buffer, size, "frequency=%llu;source=%s;oscillator_frequency=%llu",
+    char temp[256];
+    int total = Dmod_SnPrintf(temp, sizeof(temp), "frequency=%llu;source=%s;oscillator_frequency=%llu",
                   context->current_frequency,
                   source_to_string(context->config.source),
                   context->config.oscillator_frequency);
-    return (written > 0) ? (size_t)written : 0;
+    if (total <= 0 || (uint32_t)total <= offset)
+    {
+        return 0;
+    }
+    size_t available = (size_t)((uint32_t)total - offset);
+    size_t to_copy = (available < size) ? available : size;
+    memcpy(buffer, temp + offset, to_copy);
+    return to_copy;
 }
 
 /**
@@ -398,10 +407,11 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _read, ( dmdrvi_context_t co
  * @param handle Device handle
  * @param buffer Buffer with data to write
  * @param size Number of bytes to write
+ * @param offset Byte offset from the beginning of the device to write to
  * 
  * @return size_t Number of bytes written
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _write, ( dmdrvi_context_t context, void* handle, const void* buffer, size_t size ))
+dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _write, ( dmdrvi_context_t context, void* handle, const void* buffer, size_t size, uint32_t offset ))
 {
     // TODO: Implement _write function
     return 0;
@@ -489,12 +499,12 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _flush, ( dmdrvi_context_t cont
  * @brief Get device statistics
  * 
  * @param context DMDRVI context
- * @param handle Device handle
+ * @param path Device path
  * @param stat Pointer to dmdrvi_stat_t structure to fill
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _stat, ( dmdrvi_context_t context, void* handle, dmdrvi_stat_t* stat ))
+dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _stat, ( dmdrvi_context_t context, const char* path, dmdrvi_stat_t* stat ))
 {
     if(!is_valid_context(context) || stat == NULL)
     {
@@ -503,7 +513,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _stat, ( dmdrvi_context_t conte
     }
 
     char info_buffer[256];
-    int result = dmdrvi_dmclk_read(context, handle, info_buffer, sizeof(info_buffer));
+    int result = dmdrvi_dmclk_read(context, NULL, info_buffer, sizeof(info_buffer), 0);
     if(result < 0)
     {
         return result;
