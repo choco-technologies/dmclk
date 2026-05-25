@@ -92,7 +92,7 @@ static void print_clock_info(dmdrvi_context_t clk_ctx, void* handle)
     
     // Read clock information as string
     char buffer[256];
-    size_t bytes_read = dmclk_dmdrvi_read(clk_ctx, handle, buffer, sizeof(buffer) - 1);
+    size_t bytes_read = dmclk_dmdrvi_read(clk_ctx, handle, buffer, sizeof(buffer) - 1, 0);
     if (bytes_read > 0 && bytes_read < sizeof(buffer))
     {
         buffer[bytes_read] = '\0';
