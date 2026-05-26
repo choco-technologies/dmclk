@@ -1,6 +1,5 @@
 #include <dmod.h>
 #include "dmclk_port.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -58,7 +57,7 @@ int main(int argc, char* argv[])
     Dmod_Printf("Enter actual elapsed time in seconds (integer): ");
 
     uint32_t actual_seconds = 0;
-    if (scanf("%u", &actual_seconds) != 1 || actual_seconds == 0)
+    if (Dmod_Scanf("%u", &actual_seconds) != 1 || actual_seconds == 0)
     {
         Dmod_Printf("\nError: could not read a valid elapsed time.\n");
         return -1;
