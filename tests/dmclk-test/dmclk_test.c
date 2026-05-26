@@ -12,14 +12,13 @@
  *   dmclk_test <seconds>
  *
  * The application calls dmclk_port_delay() which busy-waits for the requested
- * number of seconds (with interrupts disabled) using a counted NOP loop.  The
+ * number of seconds (with interrupts disabled) using a counted ASM loop.  The
  * user then measures the actual elapsed time with an external clock and enters
- * it when prompted.  The application uses the known iteration count and the
+ * it when prompted.  The application uses the returned CPU cycle count and the
  * measured elapsed time to calculate and display the real CPU clock frequency.
  *
  * Calculation:
- *   actual_freq_hz = iterations * DMCLK_PORT_DELAY_CYCLES_PER_ITERATION
- *                    / actual_elapsed_seconds
+ *   actual_freq_hz = cpu_cycles / actual_elapsed_seconds
  */
 
 static int dmclk_test_main(int argc, char* argv[])
@@ -48,12 +47,12 @@ static int dmclk_test_main(int argc, char* argv[])
                 (unsigned long long)nominal_freq,
                 (unsigned long long)(nominal_freq / 1000000ULL));
     Dmod_Printf("Requested delay         : %u second(s)\n\n", seconds);
-    Dmod_Printf("Starting busy-wait loop (interrupts disabled)...\n");
+    Dmod_Printf("Starting busy-wait loop (critical section)...\n");
 
-    uint64_t iterations = dmclk_port_delay(seconds);
+    uint64_t cpu_cycles = dmclk_port_delay(seconds);
 
     Dmod_Printf("Delay complete.\n");
-    Dmod_Printf("Loop iterations executed: %llu\n\n", (unsigned long long)iterations);
+    Dmod_Printf("CPU cycles counted     : %llu\n\n", (unsigned long long)cpu_cycles);
 
     Dmod_Printf("Using a stopwatch or external reference clock, determine how\n");
     Dmod_Printf("many seconds actually elapsed during the busy-wait above.\n\n");
@@ -66,9 +65,8 @@ static int dmclk_test_main(int argc, char* argv[])
         return -1;
     }
 
-    /* actual_freq = (iterations * cycles_per_iteration) / actual_elapsed_s */
-    uint64_t actual_freq = (iterations * (uint64_t)DMCLK_PORT_DELAY_CYCLES_PER_ITERATION)
-                           / (uint64_t)actual_seconds;
+    /* actual_freq = cpu_cycles / actual_elapsed_s */
+    uint64_t actual_freq = cpu_cycles / (uint64_t)actual_seconds;
 
     int64_t diff = (int64_t)actual_freq - (int64_t)nominal_freq;
 

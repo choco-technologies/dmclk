@@ -249,26 +249,30 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, 
     return (dmclk_frequency_t)current_sysclk;
 }
 
+/* ARM Cortex-M4: SUBS + BNE = exactly 2 cycles per iteration.
+ * The flag dependency (SUBS sets flags, BNE reads them) prevents dual-issue. */
+#define DELAY_CYCLES_PER_ITERATION  2U
+
 /**
  * @brief Busy-wait delay using a precisely cycle-counted ASM loop inside a critical section.
  *
- * The inner loop body is ARM inline assembly (`SUBS Rn, #1` + `BNE`) which costs exactly
- * DMCLK_PORT_DELAY_CYCLES_PER_ITERATION cycles per iteration regardless of compiler flags.
+ * The inner loop body is ARM Cortex-M4 inline assembly (`SUBS Rn, #1` + `BNE`) costing
+ * exactly DELAY_CYCLES_PER_ITERATION cycles per iteration regardless of compiler flags.
  * The loop runs with interrupts disabled (via Dmod_EnterCritical) so that interrupt
- * latency cannot distort the iteration count.
+ * latency cannot distort the measurement.
  *
  * @param seconds Number of seconds to busy-wait
- * @return uint64_t Total number of ASM loop iterations executed
+ * @return uint64_t Total number of CPU cycles consumed by the busy-wait loop
  */
 dmod_dmclk_port_api_declaration(1.0, uint64_t, _delay, ( uint32_t seconds ) )
 {
-    uint32_t cycles_per_second = current_sysclk / DMCLK_PORT_DELAY_CYCLES_PER_ITERATION;
+    uint32_t iterations_per_second = current_sysclk / DELAY_CYCLES_PER_ITERATION;
     uint64_t total_iterations = 0;
 
     Dmod_EnterCritical();
 
     for (uint32_t s = 0; s < seconds; s++) {
-        uint32_t count = cycles_per_second;
+        uint32_t count = iterations_per_second;
         /* ARM Cortex-M: SUBS + BNE = exactly 2 cycles per iteration */
         __asm__ volatile (
             "1: subs %0, %0, #1\n\t"
@@ -277,10 +281,10 @@ dmod_dmclk_port_api_declaration(1.0, uint64_t, _delay, ( uint32_t seconds ) )
             :
             : "cc"
         );
-        total_iterations += cycles_per_second;
+        total_iterations += iterations_per_second;
     }
 
     Dmod_ExitCritical();
 
-    return total_iterations;
+    return total_iterations * DELAY_CYCLES_PER_ITERATION;
 }
