@@ -1,5 +1,4 @@
-#define DMOD_ENABLE_REGISTRATION
-#include "dmod.h"
+#include <dmod.h>
 #include "dmclk_port.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +20,7 @@
  *   actual_freq_hz = cpu_cycles / actual_elapsed_seconds
  */
 
-static int dmclk_test_main(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
     Dmod_Printf("\n=== DMCLK Clock Frequency Measurement ===\n\n");
 
@@ -91,5 +90,3 @@ static int dmclk_test_main(int argc, char* argv[])
 
     return 0;
 }
-
-DMOD_MAIN(dmclk_test, dmclk_test_main)
