@@ -248,3 +248,32 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, 
     }
     return (dmclk_frequency_t)current_sysclk;
 }
+
+/**
+ * @brief Busy-wait delay using a counted NOP loop executed in a critical section.
+ *
+ * The iteration count is derived from the nominal clock frequency so that the
+ * loop approximates the requested number of seconds.  Each iteration costs
+ * DMCLK_PORT_DELAY_CYCLES_PER_ITERATION CPU cycles.  Because the loop runs
+ * with interrupts disabled the caller can compare the returned iteration count
+ * against a real-world elapsed time to estimate the actual CPU frequency.
+ *
+ * @param seconds Number of seconds to busy-wait
+ * @return uint64_t Number of NOP loop iterations executed
+ */
+dmod_dmclk_port_api_declaration(1.0, uint64_t, _delay, ( uint32_t seconds ) )
+{
+    uint64_t iterations = ((uint64_t)current_sysclk * seconds) / DMCLK_PORT_DELAY_CYCLES_PER_ITERATION;
+
+    /* Enter critical section – disable all interrupts */
+    __asm__ volatile ("cpsid i" ::: "memory");
+
+    for (uint64_t i = 0; i < iterations; i++) {
+        __asm__ volatile ("nop" ::: "memory");
+    }
+
+    /* Leave critical section – re-enable interrupts */
+    __asm__ volatile ("cpsie i" ::: "memory");
+
+    return iterations;
+}
