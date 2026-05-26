@@ -1,6 +1,5 @@
 #include <dmod.h>
 #include "dmclk_port.h"
-#include <stdlib.h>
 #include <stdint.h>
 
 /**
@@ -33,8 +32,8 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    uint32_t seconds = (uint32_t)strtoul(argv[1], NULL, 10);
-    if (seconds == 0)
+    uint32_t seconds = 0;
+    if (Dmod_Sscanf(argv[1], "%u", &seconds) != 1 || seconds == 0)
     {
         Dmod_Printf("Error: invalid or zero delay: '%s'\n", argv[1]);
         return -1;
