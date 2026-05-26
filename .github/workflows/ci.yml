@@ -68,3 +68,10 @@ jobs:
           test -f build_$CPU_FAMILY/dmf/dmclk_port.dmf
           test -f build_$CPU_FAMILY/dmf/dmclk_port_version.txt
           echo "Module files present for ${CPU_FAMILY}"
+
+      - name: Verify dmclk_test module files
+        run: |
+          CPU_FAMILY="${{ matrix.cpu_family }}"
+          echo "Checking for dmclk_test module files for ${CPU_FAMILY}..."
+          test -f build_$CPU_FAMILY/dmf/dmclk_test.dmf
+          echo "dmclk_test module file present for ${CPU_FAMILY}"

@@ -234,6 +234,46 @@ void dmclk_port_delay_us(dmclk_time_us_t time_us)
     }
 }
 
+/* ARM Cortex-M7: SUBS + BNE = exactly 2 cycles per iteration.
+ * The flag dependency (SUBS sets flags, BNE reads them) prevents dual-issue. */
+#define DELAY_CYCLES_PER_ITERATION  2U
+
+/**
+ * @brief Busy-wait delay using a precisely cycle-counted ASM loop inside a critical section.
+ *
+ * The inner loop body is ARM Cortex-M7 inline assembly (`SUBS Rn, #1` + `BNE`) costing
+ * exactly DELAY_CYCLES_PER_ITERATION cycles per iteration regardless of compiler flags.
+ * The loop runs with interrupts disabled (via Dmod_EnterCritical) so that interrupt
+ * latency cannot distort the measurement.
+ *
+ * @param seconds Number of seconds to busy-wait
+ * @return uint64_t Total number of CPU cycles consumed by the busy-wait loop
+ */
+uint64_t dmclk_port_delay(uint32_t seconds)
+{
+    uint32_t iterations_per_second = current_sysclk / DELAY_CYCLES_PER_ITERATION;
+    uint64_t total_iterations = 0;
+
+    Dmod_EnterCritical();
+
+    for (uint32_t s = 0; s < seconds; s++) {
+        uint32_t count = iterations_per_second;
+        /* ARM Cortex-M: SUBS + BNE = exactly 2 cycles per iteration */
+        __asm__ volatile (
+            "1: subs %0, %0, #1\n\t"
+            "   bne  1b\n\t"
+            : "+r" (count)
+            :
+            : "cc"
+        );
+        total_iterations += iterations_per_second;
+    }
+
+    Dmod_ExitCritical();
+
+    return total_iterations * DELAY_CYCLES_PER_ITERATION;
+}
+
 /**
  * @brief Get the current clock frequency
  * 

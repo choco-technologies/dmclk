@@ -87,6 +87,8 @@ jobs:
 
           cp "$DMF_DIR/dmclk_port.dmf" release_package_port/
           cp "$DMF_DIR/dmclk_port_version.txt" release_package_port/
+
+          cp "$DMF_DIR/dmclk_test.dmf" release_package_port/
           
           if [ -f "$DMFC_DIR/dmclk.dmfc" ]; then
             cp "$DMFC_DIR/dmclk.dmfc" release_package_port/
@@ -95,6 +97,10 @@ jobs:
           if [ -f "$DMFC_DIR/dmclk_port.dmfc" ]; then
             cp "$DMFC_DIR/dmclk_port.dmfc" release_package_port/
           fi
+
+          if [ -f "$DMFC_DIR/dmclk_test.dmfc" ]; then
+            cp "$DMFC_DIR/dmclk_test.dmfc" release_package_port/
+          fi
           
           if [ -f "$DMF_DIR/dmclk.dmd" ]; then
             cp "$DMF_DIR/dmclk.dmd" release_package_port/
@@ -102,6 +108,10 @@ jobs:
 
           if [ -f "$DMF_DIR/dmclk_port.dmd" ]; then
             cp "$DMF_DIR/dmclk_port.dmd" release_package_port/
+          fi
+
+          if [ -f "$DMF_DIR/dmclk_test.dmd" ]; then
+            cp "$DMF_DIR/dmclk_test.dmd" release_package_port/
           fi
           
           # Copy header files
@@ -177,7 +187,7 @@ jobs:
           # Add $version-available directives for the modules
           echo "\$version-available dmclk $VERSIONS" >> versions.dmm
           echo "\$version-available dmclk_port $VERSIONS" >> versions.dmm
-          echo "\$version-available test_dmclk $VERSIONS" >> versions.dmm
+          echo "\$version-available dmclk_test $VERSIONS" >> versions.dmm
           
           echo "Generated versions.dmm:"
           cat versions.dmm

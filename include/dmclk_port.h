@@ -20,5 +20,24 @@ dmod_dmclk_port_api(1.0, int, _configure_hibernatation, ( dmclk_frequency_t targ
 dmod_dmclk_port_api(1.0, void, _delay_us, ( dmclk_time_us_t time_us) );
 dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_current_frequency, ( void ) );
 
+/**
+ * @brief Busy-wait delay for a given number of seconds using a precisely cycle-counted
+ *        ASM loop running inside a critical section.
+ *
+ * The inner loop is written in port-specific assembly so the cycle count per iteration
+ * is deterministic and independent of compiler optimisation settings.  The loop runs
+ * inside a critical section (Dmod_EnterCritical / Dmod_ExitCritical) so that interrupt
+ * latency cannot distort the measurement.
+ *
+ * The caller can use the returned CPU cycle count together with a real-world
+ * elapsed-time measurement to estimate the actual CPU frequency:
+ *
+ *   actual_freq_hz = cpu_cycles / actual_elapsed_seconds
+ *
+ * @param seconds  Number of seconds to busy-wait
+ * @return         Total number of CPU cycles consumed by the busy-wait loop
+ */
+dmod_dmclk_port_api(1.0, uint64_t, _delay, ( uint32_t seconds ) );
+
 
 #endif // DMCLK_PORT_H

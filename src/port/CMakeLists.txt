@@ -42,3 +42,7 @@ target_include_directories(${DMOD_MODULE_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+target_include_directories(${DMOD_MODULE_NAME}_if INTERFACE
+    ${CMAKE_SOURCE_DIR}/include
+)
