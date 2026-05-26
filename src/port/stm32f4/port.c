@@ -250,30 +250,37 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, 
 }
 
 /**
- * @brief Busy-wait delay using a counted NOP loop executed in a critical section.
+ * @brief Busy-wait delay using a precisely cycle-counted ASM loop inside a critical section.
  *
- * The iteration count is derived from the nominal clock frequency so that the
- * loop approximates the requested number of seconds.  Each iteration costs
- * DMCLK_PORT_DELAY_CYCLES_PER_ITERATION CPU cycles.  Because the loop runs
- * with interrupts disabled the caller can compare the returned iteration count
- * against a real-world elapsed time to estimate the actual CPU frequency.
+ * The inner loop body is ARM inline assembly (`SUBS Rn, #1` + `BNE`) which costs exactly
+ * DMCLK_PORT_DELAY_CYCLES_PER_ITERATION cycles per iteration regardless of compiler flags.
+ * The loop runs with interrupts disabled (via Dmod_EnterCritical) so that interrupt
+ * latency cannot distort the iteration count.
  *
  * @param seconds Number of seconds to busy-wait
- * @return uint64_t Number of NOP loop iterations executed
+ * @return uint64_t Total number of ASM loop iterations executed
  */
 dmod_dmclk_port_api_declaration(1.0, uint64_t, _delay, ( uint32_t seconds ) )
 {
-    uint64_t iterations = ((uint64_t)current_sysclk * seconds) / DMCLK_PORT_DELAY_CYCLES_PER_ITERATION;
+    uint32_t cycles_per_second = current_sysclk / DMCLK_PORT_DELAY_CYCLES_PER_ITERATION;
+    uint64_t total_iterations = 0;
 
-    /* Enter critical section – disable all interrupts */
-    __asm__ volatile ("cpsid i" ::: "memory");
+    Dmod_EnterCritical();
 
-    for (uint64_t i = 0; i < iterations; i++) {
-        __asm__ volatile ("nop" ::: "memory");
+    for (uint32_t s = 0; s < seconds; s++) {
+        uint32_t count = cycles_per_second;
+        /* ARM Cortex-M: SUBS + BNE = exactly 2 cycles per iteration */
+        __asm__ volatile (
+            "1: subs %0, %0, #1\n\t"
+            "   bne  1b\n\t"
+            : "+r" (count)
+            :
+            : "cc"
+        );
+        total_iterations += cycles_per_second;
     }
 
-    /* Leave critical section – re-enable interrupts */
-    __asm__ volatile ("cpsie i" ::: "memory");
+    Dmod_ExitCritical();
 
-    return iterations;
+    return total_iterations;
 }
