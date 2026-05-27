@@ -2,6 +2,27 @@
 #include "port/stm32_common_regs.h"
 #include <stddef.h>
 
+/* ARM CoreSight / DWT registers for cycle-accurate timing on Cortex-M */
+#define ARM_DEMCR_ADDR                  0xE000EDFCUL
+#define ARM_DEMCR_TRCENA_Msk            (1UL << 24)
+#define ARM_DWT_CTRL_ADDR               0xE0001000UL
+#define ARM_DWT_CYCCNT_ADDR             0xE0001004UL
+#define ARM_DWT_CTRL_CYCCNTENA_Msk      (1UL << 0)
+#define ARM_DWT_LAR_ADDR                0xE0001FB0UL
+#define ARM_DWT_LAR_UNLOCK_KEY          0xC5ACCE55UL
+
+#define ARM_DEMCR                       (*(volatile uint32_t *)ARM_DEMCR_ADDR)
+#define ARM_DWT_CTRL                    (*(volatile uint32_t *)ARM_DWT_CTRL_ADDR)
+#define ARM_DWT_CYCCNT                  (*(volatile uint32_t *)ARM_DWT_CYCCNT_ADDR)
+#define ARM_DWT_LAR                     (*(volatile uint32_t *)ARM_DWT_LAR_ADDR)
+
+static int stm32_dwt_cyccnt_is_running(void)
+{
+    uint32_t probe_start = ARM_DWT_CYCCNT;
+    __asm__ volatile ("nop\n\t" "nop\n\t" "nop\n\t" "nop\n\t");
+    return (ARM_DWT_CYCCNT != probe_start);
+}
+
 /**
  * @brief Calculate PLL parameters for target frequency
  */
@@ -294,4 +315,38 @@ uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value)
     }
 
     return sysclk;
+}
+
+int stm32_delay_cycles_dwt(uint64_t target_cycles, uint64_t *elapsed_cycles)
+{
+    if (elapsed_cycles == NULL) {
+        return -1;
+    }
+
+    *elapsed_cycles = 0U;
+    if (target_cycles == 0U) {
+        return 0;
+    }
+
+    /* Enable tracing + DWT cycle counter */
+    ARM_DEMCR |= ARM_DEMCR_TRCENA_Msk;
+    ARM_DWT_LAR = ARM_DWT_LAR_UNLOCK_KEY;
+    ARM_DWT_CYCCNT = 0U;
+    ARM_DWT_CTRL |= ARM_DWT_CTRL_CYCCNTENA_Msk;
+
+    if (!stm32_dwt_cyccnt_is_running()) {
+        return -1;
+    }
+
+    uint64_t elapsed = 0U;
+    uint32_t prev = ARM_DWT_CYCCNT;
+
+    while (elapsed < target_cycles) {
+        uint32_t now = ARM_DWT_CYCCNT;
+        elapsed += (uint32_t)(now - prev);
+        prev = now;
+    }
+
+    *elapsed_cycles = elapsed;
+    return 0;
 }

@@ -120,4 +120,18 @@ int stm32_configure_bus_prescalers(uintptr_t rcc_base,
  */
 uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value);
 
+/**
+ * @brief Delay for a target number of CPU cycles using ARM DWT CYCCNT.
+ *
+ * The function enables the DWT cycle counter, verifies it is running,
+ * then accumulates elapsed cycles (with wrap-around handling) until
+ * @p target_cycles is reached.
+ *
+ * @param target_cycles Number of cycles to wait
+ * @param elapsed_cycles Output elapsed cycles measured by DWT
+ *
+ * @return int 0 on success, non-zero if DWT CYCCNT is unavailable
+ */
+int stm32_delay_cycles_dwt(uint64_t target_cycles, uint64_t *elapsed_cycles);
+
 #endif // STM32_COMMON_H

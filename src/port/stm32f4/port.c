@@ -249,27 +249,38 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, 
     return (dmclk_frequency_t)current_sysclk;
 }
 
-/* ARM Cortex-M4: SUBS + BNE = exactly 2 cycles per iteration.
- * The flag dependency (SUBS sets flags, BNE reads them) prevents dual-issue. */
-#define DELAY_CYCLES_PER_ITERATION  2U
+/* Fallback for targets where DWT CYCCNT is unavailable */
+#define DELAY_CYCLES_PER_ITERATION      2U
 
 /**
- * @brief Busy-wait delay using a precisely cycle-counted ASM loop inside a critical section.
+ * @brief Busy-wait delay using cycle-accurate hardware counting inside a critical section.
  *
- * The inner loop body is ARM Cortex-M4 inline assembly (`SUBS Rn, #1` + `BNE`) costing
- * exactly DELAY_CYCLES_PER_ITERATION cycles per iteration regardless of compiler flags.
- * The loop runs with interrupts disabled (via Dmod_EnterCritical) so that interrupt
- * latency cannot distort the measurement.
+ * The function prefers ARM DWT CYCCNT on Cortex-M4 and accumulates elapsed cycles,
+ * including wrap-around handling, until the target cycle budget is reached.
+ * If CYCCNT is unavailable, it falls back to a counted ASM loop.
  *
  * @param seconds Number of seconds to busy-wait
  * @return uint64_t Total number of CPU cycles consumed by the busy-wait loop
  */
 dmod_dmclk_port_api_declaration(1.0, uint64_t, _delay, ( uint32_t seconds ) )
 {
-    uint32_t iterations_per_second = current_sysclk / DELAY_CYCLES_PER_ITERATION;
-    uint64_t total_iterations = 0;
+    uint64_t target_cycles = (uint64_t)current_sysclk * (uint64_t)seconds;
+
+    if (target_cycles == 0U) {
+        return 0U;
+    }
 
     Dmod_EnterCritical();
+
+    uint64_t elapsed = 0U;
+    if (stm32_delay_cycles_dwt(target_cycles, &elapsed) == 0) {
+        Dmod_ExitCritical();
+        return elapsed;
+    }
+
+    /* Fallback path: deterministic ASM loop with assumed 2 cycles/iteration */
+    uint32_t iterations_per_second = current_sysclk / DELAY_CYCLES_PER_ITERATION;
+    uint64_t total_iterations = 0;
 
     for (uint32_t s = 0; s < seconds; s++) {
         uint32_t count = iterations_per_second;
