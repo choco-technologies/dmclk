@@ -7,6 +7,9 @@ set(DMOD_MODULE_NAME        dmclk_test)
 set(DMOD_AUTHOR_NAME        "Patryk Kubiak")
 set(DMOD_STACK_SIZE         2048)
 
+# Path to the DMR file for this module
+set(DMOD_DMR_PATH           ${CMAKE_SOURCE_DIR}/dmclk_test.dmr)
+
 # ======================================================================
 #               Create dmclk_test application module
 # ======================================================================

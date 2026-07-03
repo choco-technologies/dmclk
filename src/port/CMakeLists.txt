@@ -19,6 +19,9 @@ set(DMOD_AUTHOR_NAME        "Patryk Kubiak")
 # Stack size for the module (should be integer)
 set(DMOD_STACK_SIZE         1024)
 
+# Path to the DMR file for this module
+set(DMOD_DMR_PATH           ${CMAKE_SOURCE_DIR}/dmclk_port.dmr)
+
 # Determine common source files based on MCU family
 set(COMMON_SOURCES "")
 if(DMCLK_MCU_SERIES MATCHES "^stm32")

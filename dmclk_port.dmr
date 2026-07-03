@@ -1,4 +1,4 @@
-# DMOD Resource File for dmclk
+# DMOD Resource File for dmclk_port
 # This file specifies where resources should be installed
 
 # === Core Module ===
@@ -14,21 +14,9 @@ dmd=./${module}.dmd => ${destination}/${module}.dmd [origin=${dmf_dir}/${module}
 # Version information
 version=./${module}_version.txt => ${destination}/${module}_version.txt [origin=${dmf_dir}/${module}_version.txt]
 
-# === Documentation ===
-# Module documentation in markdown format for dmf-man tool
-docs=./docs => ${destination}/${module}/docs [origin=${repo_dir}/docs]
-
-# README file
-readme=./README.md => ${destination}/${module}/README.md [origin=${repo_dir}/README.md]
-
 # === Header Files ===
-# Include directory with all headers (dmclk.h and dmclk_defs.h)
-inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [origin=${build_dir}/${module}_defs.h]
-
-# === Configuration Files ===
-# Configuration directory with board and MCU specific configs
-configs=./configs => ${destination}/${module}/configs [origin=${repo_dir}/configs]
+# Full include directory with all headers and generated platform definitions header
+inc=./include => ${destination}/${module}/include [origin=${repo_dir}/include] [origin=${build_dir}/src/port/${module}_defs.h]
 
 # === License ===
-# License file
 license=./LICENSE => ${destination}/${module}/LICENSE [origin=${repo_dir}/LICENSE]

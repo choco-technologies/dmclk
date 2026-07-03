@@ -88,6 +88,9 @@ set(DMOD_AUTHOR_NAME        "Patryk Kubiak")
 # Stack size for the module (should be integer)
 set(DMOD_STACK_SIZE         1024)
 
+# Path to the DMR file for this module
+set(DMOD_DMR_PATH           ${CMAKE_CURRENT_SOURCE_DIR}/dmclk.dmr)
+
 #
 #   dmod_add_library - create a library module
 #   it has the same signature as add_library
