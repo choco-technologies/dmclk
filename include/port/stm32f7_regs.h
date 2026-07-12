@@ -10,9 +10,17 @@
 /* Memory base addresses for STM32F7 */
 #define STM32F7_FLASH_BASE      0x40023C00U
 #define STM32F7_RCC_BASE        0x40023800U
+#define STM32F7_PWR_BASE        0x40007000U
 
 /* STM32F7 clock frequency limits */
 #define STM32F7_MAX_SYSCLK      216000000U  /* Maximum system clock for STM32F7 */
+/* Above this HCLK, PWR Over-Drive mode must be enabled (RM0385 "Over-drive
+ * switching") or high-frequency accesses (e.g. FMC to external SDRAM)
+ * become unreliable - verified on real hardware (STM32F746G-Discovery,
+ * HCLK=216MHz without Over-Drive: SDRAM reads corrupted; same board and
+ * clock with Over-Drive enabled: byte-exact). ST's own reference examples
+ * enable Over-Drive whenever the target is above 180MHz. */
+#define STM32F7_MAX_SYSCLK_NO_OVERDRIVE 180000000U
 #define STM32F7_MAX_HCLK        216000000U  /* Maximum AHB clock */
 #define STM32F7_MAX_PCLK1       54000000U   /* Maximum APB1 clock */
 #define STM32F7_MAX_PCLK2       108000000U  /* Maximum APB2 clock */

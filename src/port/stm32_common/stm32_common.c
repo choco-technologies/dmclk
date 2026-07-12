@@ -267,6 +267,28 @@ int stm32_configure_bus_prescalers(uintptr_t rcc_base,
 }
 
 /**
+ * @brief Enable PWR Over-Drive mode
+ */
+int stm32_enable_overdrive(uintptr_t rcc_base, uintptr_t pwr_base, uint32_t timeout)
+{
+    volatile RCC_TypeDef *RCC = (RCC_TypeDef *)rcc_base;
+    volatile PWR_TypeDef *PWR = (PWR_TypeDef *)pwr_base;
+    uint32_t counter;
+
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+
+    PWR->CR1 |= PWR_CR1_ODEN;
+    counter = 0;
+    while (!(PWR->CSR1 & PWR_CSR1_ODRDY)) {
+        if (++counter > timeout) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief Get current system clock frequency
  */
 uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value)

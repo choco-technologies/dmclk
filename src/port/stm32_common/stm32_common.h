@@ -121,6 +121,22 @@ int stm32_configure_bus_prescalers(uintptr_t rcc_base,
 uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value);
 
 /**
+ * @brief Enable PWR Over-Drive mode (STM32F7 parts only).
+ *
+ * Required by ST above a family-specific HCLK threshold (216MHz-class parts:
+ * 180MHz, see RM0385 "Over-drive switching") to keep the core, buses and
+ * peripherals (e.g. FMC to external SDRAM) within timing spec. Enables the
+ * PWR peripheral clock, sets PWR_CR1.ODEN and waits for PWR_CSR1.ODRDY.
+ *
+ * @param rcc_base RCC base address
+ * @param pwr_base PWR base address
+ * @param timeout Timeout in loop iterations
+ *
+ * @return int 0 on success, non-zero on timeout
+ */
+int stm32_enable_overdrive(uintptr_t rcc_base, uintptr_t pwr_base, uint32_t timeout);
+
+/**
  * @brief Delay for a target number of CPU cycles using ARM DWT CYCCNT.
  *
  * The function enables the DWT cycle counter, verifies it is running,

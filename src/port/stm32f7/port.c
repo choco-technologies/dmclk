@@ -105,6 +105,15 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency
         return -1;
     }
 
+    /* Above STM32F7_MAX_SYSCLK_NO_OVERDRIVE, Over-Drive must be enabled
+     * before the core actually starts running at the higher HCLK, i.e.
+     * before switching SYSCLK to the PLL below. */
+    if (actual_freq > STM32F7_MAX_SYSCLK_NO_OVERDRIVE) {
+        if (stm32_enable_overdrive(STM32F7_RCC_BASE, STM32F7_PWR_BASE, OVERDRIVE_STARTUP_TIMEOUT) != 0) {
+            return -1;
+        }
+    }
+
     /* Configure bus prescalers */
     if (stm32_configure_bus_prescalers(STM32F7_RCC_BASE, actual_freq, &stm32f7_limits) != 0) {
         return -1;
@@ -173,6 +182,15 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency
     RCC->CR |= RCC_CR_PLLON;
     if (stm32_wait_clock_ready(STM32F7_RCC_BASE, RCC_CR_PLLRDY, PLL_STARTUP_TIMEOUT) != 0) {
         return -1;
+    }
+
+    /* Above STM32F7_MAX_SYSCLK_NO_OVERDRIVE, Over-Drive must be enabled
+     * before the core actually starts running at the higher HCLK, i.e.
+     * before switching SYSCLK to the PLL below. */
+    if (actual_freq > STM32F7_MAX_SYSCLK_NO_OVERDRIVE) {
+        if (stm32_enable_overdrive(STM32F7_RCC_BASE, STM32F7_PWR_BASE, OVERDRIVE_STARTUP_TIMEOUT) != 0) {
+            return -1;
+        }
     }
 
     /* Configure bus prescalers */

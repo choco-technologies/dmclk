@@ -36,6 +36,10 @@
 #define RCC_PLLCFGR_PLLQ_Pos    24U
 #define RCC_PLLCFGR_PLLQ_Msk    (0xFU << RCC_PLLCFGR_PLLQ_Pos)
 
+/* RCC_APB1ENR register bits (needed to clock the PWR peripheral before its
+ * registers, e.g. for Over-Drive, can be accessed) */
+#define RCC_APB1ENR_PWREN       (1U << 28)
+
 /* RCC_CFGR register bits and masks */
 #define RCC_CFGR_SW_Pos         0U
 #define RCC_CFGR_SW_Msk         (0x3U << RCC_CFGR_SW_Pos)
@@ -77,15 +81,18 @@
 #define HSE_STARTUP_TIMEOUT     5000U
 #define PLL_STARTUP_TIMEOUT     5000U
 #define CLOCKSWITCH_TIMEOUT     5000U
+#define OVERDRIVE_STARTUP_TIMEOUT 5000U
 
 /**
  * @brief RCC register structure (common layout)
  */
 typedef struct {
-    volatile uint32_t CR;           /* Clock control register */
-    volatile uint32_t PLLCFGR;      /* PLL configuration register */
-    volatile uint32_t CFGR;         /* Clock configuration register */
-    volatile uint32_t CIR;          /* Clock interrupt register */
+    volatile uint32_t CR;           /* 0x00 - Clock control register */
+    volatile uint32_t PLLCFGR;      /* 0x04 - PLL configuration register */
+    volatile uint32_t CFGR;         /* 0x08 - Clock configuration register */
+    volatile uint32_t CIR;          /* 0x0C - Clock interrupt register */
+    volatile uint32_t RESERVED0[12]; /* 0x10..0x3C - resets/enables not needed here */
+    volatile uint32_t APB1ENR;      /* 0x40 - APB1 peripheral clock enable register */
     /* Additional registers would follow but are not needed for basic clock config */
 } RCC_TypeDef;
 
@@ -96,5 +103,23 @@ typedef struct {
     volatile uint32_t ACR;          /* Flash access control register */
     /* Additional registers would follow but ACR is main one needed */
 } FLASH_TypeDef;
+
+/**
+ * @brief PWR (Power control) register structure, needed for Over-Drive mode
+ * on STM32F7 parts running the core above their non-Over-Drive HCLK limit
+ * (see RM0385: Over-Drive must be enabled above 180MHz).
+ */
+typedef struct {
+    volatile uint32_t CR1;          /* 0x00 - Power control register 1 */
+    volatile uint32_t CSR1;         /* 0x04 - Power control/status register 1 */
+} PWR_TypeDef;
+
+/* PWR_CR1 register bits */
+#define PWR_CR1_ODEN            (1U << 16)  /* Over-Drive enable */
+#define PWR_CR1_ODSWEN          (1U << 17)  /* Over-Drive switching enable */
+
+/* PWR_CSR1 register bits */
+#define PWR_CSR1_ODRDY          (1U << 16)  /* Over-Drive ready */
+#define PWR_CSR1_ODSWRDY        (1U << 17)  /* Over-Drive switching ready */
 
 #endif // STM32_COMMON_REGS_H
