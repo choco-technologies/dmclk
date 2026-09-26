@@ -246,11 +246,6 @@ static int read_configuration(dmdrvi_context_t context, int command, void* arg)
         case dmclk_ioctl_cmd_get_frequency:
             *(dmclk_frequency_t*)arg = context->current_frequency;
             break;
-        case dmclk_ioctl_cmd_get_clk48_frequency:
-            /* Always read back from hardware rather than a cached value -
-             * unlike SYSCLK, nothing else in this driver tracks CLK48. */
-            *(dmclk_frequency_t*)arg = dmclk_port_get_clk48_frequency();
-            break;
         default:
             DMOD_LOG_ERROR("Invalid configuration command %d in read_configuration\n", command);
             ret = -EINVAL;

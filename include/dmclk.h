@@ -31,7 +31,6 @@ typedef enum
     dmclk_ioctl_cmd_set_target_frequency,    /**< Set target frequency */
     dmclk_ioctl_cmd_get_target_frequency,    /**< Get target frequency */
     dmclk_ioctl_cmd_reconfigure,             /**< Reconfigure clock with current settings */
-    dmclk_ioctl_cmd_get_clk48_frequency,     /**< Get actual CLK48 (USB/SDIO/SDMMC/RNG) frequency */
 
     dmclk_ioctl_cmd_max
 

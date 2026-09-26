@@ -1,5 +1,6 @@
 #define DMOD_ENABLE_REGISTRATION    ON
 #include "dmclk_port.h"
+#include "dmclk_stm32.h"
 #include "../stm32_common/stm32_common.h"
 #include "port/stm32_common_regs.h"
 #include "port/stm32f4_regs.h"
@@ -252,12 +253,13 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, 
 }
 
 /**
- * @brief Get the actual, currently-programmed CLK48 frequency
+ * @brief Get the actual, currently-programmed CLK48 frequency (STM32-only,
+ * see dmclk_stm32.h - deliberately not part of the generic dmclk_port DIF)
  *
  * @return dmclk_frequency_t CLK48 frequency in Hz, or 0 if the PLL isn't
  *         currently driving the system clock
  */
-dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_clk48_frequency, ( void ) )
+dmclk_frequency_t dmclk_stm32_get_clk48_frequency(void)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
     uint32_t pll_input_freq = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) ? current_hse_freq : HSI_VALUE;
