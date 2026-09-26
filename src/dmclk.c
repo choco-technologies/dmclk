@@ -286,7 +286,7 @@ int dmod_deinit(void)
  * 
  * @return dmdrvi_context_t New DMDRVI context
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, dmdrvi_context_t, _create, ( dmini_context_t config, dmdrvi_dev_num_t* dev_num ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, dmdrvi_context_t, _create, ( dmini_context_t config, dmdrvi_dev_num_t* dev_num ))
 {
     if(config == NULL || dev_num == NULL)
     {
@@ -323,7 +323,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, dmdrvi_context_t, _create, ( dmini_c
  * @brief Free the DMDRVI context
  * 
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void, _free, ( dmdrvi_context_t context ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, void, _free, ( dmdrvi_context_t context ))
 {
     if (is_valid_context(context))
     {
@@ -334,14 +334,16 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void, _free, ( dmdrvi_context_t cont
 
 /**
  * @brief Open a device handle
- * 
+ *
  * @param context DMDRVI context
  * @param flags Open flags
- * 
+ * @param dev_num Unused - dmclk exposes a single, unnumbered device
+ *
  * @return void* Device handle
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void*, _open, ( dmdrvi_context_t context, int flags ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, void*, _open, ( dmdrvi_context_t context, int flags, const dmdrvi_dev_num_t* dev_num ))
 {
+    (void)dev_num; // dmclk exposes a single, unnumbered device
     if(!is_valid_context(context))
     {
         DMOD_LOG_ERROR("Invalid DMDRVI context in dmclk_dmdrvi_open\n");
@@ -362,7 +364,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void*, _open, ( dmdrvi_context_t con
  * @param handle Device handle
  * @return void
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void, _close, ( dmdrvi_context_t context, void* handle ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, void, _close, ( dmdrvi_context_t context, void* handle ))
 {
     // No specific action needed to close the clock device
 }
@@ -377,25 +379,34 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, void, _close, ( dmdrvi_context_t con
  * @param handle Device handle
  * @param buffer Buffer to read data into
  * @param size Size of the buffer
- * @param offset Byte offset from the beginning of the device data to read from
- * 
- * @return size_t Number of bytes read
+ * @param offset Non-negative byte offset from the beginning of the device data to read from
+ *
+ * @return dmdrvi_ssize_t Number of bytes read, or a negative errno-compatible error
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _read, ( dmdrvi_context_t context, void* handle, void* buffer, size_t size, uint32_t offset ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, dmdrvi_ssize_t, _read, ( dmdrvi_context_t context, void* handle, void* buffer, size_t size, dmdrvi_offset_t offset ))
 {
+    if (offset < 0)
+    {
+        return -EINVAL;
+    }
+    if (size > (size_t)INT64_MAX)
+    {
+        return -EOVERFLOW;
+    }
+
     char temp[256];
     int total = Dmod_SnPrintf(temp, sizeof(temp), "frequency=%llu;source=%s;oscillator_frequency=%llu",
                   context->current_frequency,
                   source_to_string(context->config.source),
                   context->config.oscillator_frequency);
-    if (total <= 0 || (uint32_t)total <= offset)
+    if (total <= 0 || (dmdrvi_offset_t)total <= offset)
     {
         return 0;
     }
-    size_t available = (size_t)((uint32_t)total - offset);
+    size_t available = (size_t)((dmdrvi_size_t)total - (dmdrvi_size_t)offset);
     size_t to_copy = (available < size) ? available : size;
     memcpy(buffer, temp + offset, to_copy);
-    return to_copy;
+    return (dmdrvi_ssize_t)to_copy;
 }
 
 /**
@@ -407,11 +418,11 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _read, ( dmdrvi_context_t co
  * @param handle Device handle
  * @param buffer Buffer with data to write
  * @param size Number of bytes to write
- * @param offset Byte offset from the beginning of the device to write to
- * 
- * @return size_t Number of bytes written
+ * @param offset Non-negative byte offset from the beginning of the device to write to
+ *
+ * @return dmdrvi_ssize_t Number of bytes written, or a negative errno-compatible error
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _write, ( dmdrvi_context_t context, void* handle, const void* buffer, size_t size, uint32_t offset ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, dmdrvi_ssize_t, _write, ( dmdrvi_context_t context, void* handle, const void* buffer, size_t size, dmdrvi_offset_t offset ))
 {
     // TODO: Implement _write function
     return 0;
@@ -429,7 +440,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, size_t, _write, ( dmdrvi_context_t c
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _ioctl, ( dmdrvi_context_t context, void* handle, int command, void* arg ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, int, _ioctl, ( dmdrvi_context_t context, void* handle, int command, void* arg ))
 {
     int ret = 0;
     if (!is_valid_context(context))
@@ -490,7 +501,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _ioctl, ( dmdrvi_context_t cont
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _flush, ( dmdrvi_context_t context, void* handle ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, int, _flush, ( dmdrvi_context_t context, void* handle ))
 {
     return 0;
 }
@@ -504,7 +515,7 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _flush, ( dmdrvi_context_t cont
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _stat, ( dmdrvi_context_t context, const char* path, dmdrvi_stat_t* stat ))
+dmod_dmdrvi_dif_api_declaration(2.0, dmclk, int, _stat, ( dmdrvi_context_t context, const char* path, dmdrvi_stat_t* stat ))
 {
     if(!is_valid_context(context) || stat == NULL)
     {
@@ -513,12 +524,12 @@ dmod_dmdrvi_dif_api_declaration(1.0, dmclk, int, _stat, ( dmdrvi_context_t conte
     }
 
     char info_buffer[256];
-    int result = dmdrvi_dmclk_read(context, NULL, info_buffer, sizeof(info_buffer), 0);
+    dmdrvi_ssize_t result = dmdrvi_dmclk_read(context, NULL, info_buffer, sizeof(info_buffer), 0);
     if(result < 0)
     {
-        return result;
+        return (int)result;
     }
-    stat->size = (uint32_t)result;
+    stat->size = (dmdrvi_size_t)result;
     stat->mode = 0444; // Read-only permissions
     return 0;
 }
