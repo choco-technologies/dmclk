@@ -24,6 +24,8 @@ static const clock_limits_t stm32f7_limits = {
     .plln_max = STM32F7_PLLN_MAX,
     .pllp_min = STM32F7_PLLP_MIN,
     .pllp_max = STM32F7_PLLP_MAX,
+    .pllq_min = STM32F7_PLLQ_MIN,
+    .pllq_max = STM32F7_PLLQ_MAX,
     .flash_latency_table = stm32f7_flash_latency,
     .flash_latency_count = STM32F7_FLASH_LATENCY_COUNT,
 };
@@ -316,4 +318,17 @@ dmclk_frequency_t dmclk_port_get_current_frequency(void)
         current_sysclk = freq;
     }
     return (dmclk_frequency_t)current_sysclk;
+}
+
+/**
+ * @brief Get the actual, currently-programmed CLK48 frequency
+ *
+ * @return dmclk_frequency_t CLK48 frequency in Hz, or 0 if the PLL isn't
+ *         currently driving the system clock
+ */
+dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_clk48_frequency, ( void ) )
+{
+    volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
+    uint32_t pll_input_freq = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) ? current_hse_freq : HSI_VALUE;
+    return (dmclk_frequency_t)stm32_get_clk48_freq(STM32F7_RCC_BASE, pll_input_freq);
 }

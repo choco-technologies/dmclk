@@ -7,6 +7,35 @@ on:
     branches: [ master, develop, 'feature/**', 'copilot/**' ]
 
 jobs:
+  build-and-test-pll-solver:
+    name: Build and Test PLL Solver (host)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: chocotechnologies/dmod:1.0.4
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build pll_solver_test
+        run: |
+          set -e
+          mkdir -p build
+          cd build
+          # stm32_common.c's PLL math and register-field packing are plain
+          # arithmetic exercised against a fake RCC_TypeDef (see
+          # tests/pll-solver-test) - no target board needed, build and run
+          # it natively here.
+          cmake .. -DDMOD_MODE=DMOD_MODULE -DDMOD_TOOLS_NAME=arch/x86_64
+          cmake --build . --target pll_solver_test
+
+      - name: Run pll_solver_test
+        run: |
+          export DMOD_DMF_DIR=$(pwd)/build/dmf
+          dmod_loader build/dmf/pll_solver_test.dmf
+
   discover-cpu-families:
     name: Discover CPU Families
     runs-on: ubuntu-latest

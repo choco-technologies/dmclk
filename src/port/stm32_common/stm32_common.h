@@ -34,9 +34,21 @@ typedef struct {
     uint32_t plln_max;
     uint32_t pllp_min;
     uint32_t pllp_max;
+    uint32_t pllq_min;
+    uint32_t pllq_max;
     const void *flash_latency_table;
     uint32_t flash_latency_count;
 } clock_limits_t;
+
+/**
+ * @brief Target frequency for the PLL's Q-divider output (CLK48).
+ *
+ * On STM32F4/F7 this single divider feeds USB OTG FS, SDIO/SDMMC, and the
+ * RNG - all three require this domain to be (very close to) exactly 48 MHz,
+ * so the solver treats it as a hard constraint alongside SYSCLK rather than
+ * something to optimize separately.
+ */
+#define STM32_CLK48_TARGET_HZ 48000000U
 
 /**
  * @brief Common functions for STM32 clock configuration
@@ -119,6 +131,26 @@ int stm32_configure_bus_prescalers(uintptr_t rcc_base,
  * @return uint32_t Current system clock frequency in Hz
  */
 uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value);
+
+/**
+ * @brief Get the actual, currently-programmed CLK48 frequency.
+ *
+ * Reads PLLM/PLLN/PLLQ back from RCC_PLLCFGR and derives the Q-divider
+ * output from them, rather than trusting whatever was last requested - the
+ * same "read the truth back from hardware" approach as
+ * stm32_get_sysclk_freq(). The caller supplies the PLL's input frequency
+ * (HSI or HSE, whichever RCC_PLLCFGR.PLLSRC currently selects) since that
+ * value is tracked as port-specific state, not something this shared
+ * helper can read out of RCC on its own.
+ *
+ * @param rcc_base RCC base address
+ * @param pll_input_freq Frequency feeding the PLL's input (post-PLLM would
+ *                        be wrong - this is the pre-PLLM oscillator value)
+ *
+ * @return uint32_t CLK48 frequency in Hz, or 0 if the PLL is not currently
+ *         driving the system clock or its configuration is invalid
+ */
+uint32_t stm32_get_clk48_freq(uintptr_t rcc_base, uint32_t pll_input_freq);
 
 /**
  * @brief Enable PWR Over-Drive mode (STM32F7 parts only).

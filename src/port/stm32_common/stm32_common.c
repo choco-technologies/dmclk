@@ -54,7 +54,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
     /* Try different PLLM values */
     for (uint32_t pllm = limits->pllm_min; pllm <= limits->pllm_max; pllm++) {
         uint32_t pll_in = source_freq / pllm;
-        
+
         /* Check if PLL input frequency is within valid range */
         if (pll_in < limits->pll_in_min || pll_in > limits->pll_in_max) {
             continue;
@@ -64,7 +64,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
         for (uint32_t pllp = limits->pllp_min; pllp <= limits->pllp_max; pllp += 2) {
             /* Calculate required PLLN */
             uint32_t plln = (target_freq_32 * pllp) / pll_in;
-            
+
             /* Check if PLLN is within valid range */
             if (plln < limits->plln_min || plln > limits->plln_max) {
                 continue;
@@ -72,7 +72,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
 
             /* Calculate VCO frequency */
             uint32_t vco = pll_in * plln;
-            
+
             /* Check if VCO frequency is within valid range */
             if (vco < limits->vco_min || vco > limits->vco_max) {
                 continue;
@@ -80,7 +80,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
 
             /* Calculate actual output frequency */
             uint32_t calc_actual_freq = vco / pllp;
-            
+
             /* Calculate error */
             uint32_t error;
             if (calc_actual_freq > target_freq_32) {
@@ -89,14 +89,32 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
                 error = target_freq_32 - calc_actual_freq;
             }
 
+            if (error > tolerance_32) {
+                continue;
+            }
+
+            /* This VCO/PLLP pair satisfies SYSCLK, but the whole
+             * configuration is only usable if the SAME VCO also divides
+             * down to exactly 48 MHz through a valid PLLQ - USB/SDIO/RNG
+             * share this one divider, so it is not optional. Candidates
+             * that can't reach 48 MHz are skipped entirely rather than
+             * accepted with a wrong/default PLLQ. */
+            if (vco % STM32_CLK48_TARGET_HZ != 0U) {
+                continue;
+            }
+            uint32_t pllq = vco / STM32_CLK48_TARGET_HZ;
+            if (pllq < limits->pllq_min || pllq > limits->pllq_max) {
+                continue;
+            }
+
             /* Check if this is the best configuration so far */
-            if (error < best_error && error <= tolerance_32) {
+            if (error < best_error) {
                 best_error = error;
                 best_actual_freq = calc_actual_freq;
                 best_config.pllm = pllm;
                 best_config.plln = plln;
                 best_config.pllp = pllp;
-                best_config.pllq = 4; /* Default value for USB, can be optimized */
+                best_config.pllq = pllq;
                 found = 1;
 
                 /* Perfect match found */
@@ -105,13 +123,16 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
                 }
             }
         }
-        
+
         if (found && best_error == 0) {
             break;
         }
     }
 
     if (!found) {
+        /* No (PLLM, PLLN, PLLP) satisfying SYSCLK within tolerance also
+         * divides down to exactly 48 MHz through a valid PLLQ - fail
+         * clearly instead of silently programming an incorrect CLK48. */
         return -1;
     }
 
@@ -337,6 +358,31 @@ uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value)
     }
 
     return sysclk;
+}
+
+uint32_t stm32_get_clk48_freq(uintptr_t rcc_base, uint32_t pll_input_freq)
+{
+    volatile RCC_TypeDef *RCC = (RCC_TypeDef *)rcc_base;
+    uint32_t sws = (RCC->CFGR & RCC_CFGR_SWS_Msk) >> RCC_CFGR_SWS_Pos;
+
+    /* CLK48 only exists while the PLL is actually driving the system -
+     * with HSI/HSE selected directly the PLL (and its Q-divider) may be
+     * off or configured for something else entirely. */
+    if (sws != 2 || pll_input_freq == 0U) {
+        return 0U;
+    }
+
+    uint32_t pllcfgr = RCC->PLLCFGR;
+    uint32_t pllm = (pllcfgr & RCC_PLLCFGR_PLLM_Msk) >> RCC_PLLCFGR_PLLM_Pos;
+    uint32_t plln = (pllcfgr & RCC_PLLCFGR_PLLN_Msk) >> RCC_PLLCFGR_PLLN_Pos;
+    uint32_t pllq = (pllcfgr & RCC_PLLCFGR_PLLQ_Msk) >> RCC_PLLCFGR_PLLQ_Pos;
+
+    if (pllm == 0U || pllq == 0U) {
+        return 0U;
+    }
+
+    uint32_t vco = (pll_input_freq / pllm) * plln;
+    return vco / pllq;
 }
 
 int stm32_delay_cycles_dwt(uint64_t target_cycles, uint64_t *elapsed_cycles)

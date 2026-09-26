@@ -21,6 +21,19 @@ dmod_dmclk_port_api(1.0, void, _delay_us, ( dmclk_time_us_t time_us) );
 dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_current_frequency, ( void ) );
 
 /**
+ * @brief Get the actual, currently-programmed CLK48 frequency.
+ *
+ * On STM32F4/F7 this is the PLL's Q-divider output, which feeds USB OTG FS,
+ * SDIO/SDMMC, and the RNG - a single shared domain, not one frequency per
+ * consumer. Read back from hardware registers rather than cached from the
+ * last configuration request, the same as _get_current_frequency().
+ *
+ * @return dmclk_frequency_t CLK48 frequency in Hz, or 0 if this port/mode
+ *         has no such domain (e.g. hibernation clock) or it isn't active
+ */
+dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_clk48_frequency, ( void ) );
+
+/**
  * @brief Busy-wait delay for a given number of seconds and return consumed CPU cycles.
  *
  * Port implementations should run in a critical section so interrupt latency does not
