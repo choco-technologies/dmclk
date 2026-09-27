@@ -26,8 +26,8 @@ static const clock_limits_t f7_limits = {
 };
 
 static const clock_limits_t f4_limits = {
-    .max_sysclk = 168000000U, .max_hclk = 168000000U,
-    .max_pclk1 = 42000000U, .max_pclk2 = 84000000U,
+    .max_sysclk = 180000000U, .max_hclk = 180000000U,
+    .max_pclk1 = 45000000U, .max_pclk2 = 90000000U,
     .vco_min = 100000000U, .vco_max = 432000000U,
     .pll_in_min = 1000000U, .pll_in_max = 2000000U,
     .pllm_min = 2U, .pllm_max = 63U,
@@ -68,18 +68,69 @@ DMOD_TEST_STEP(stm32f4_168mhz_from_8mhz_hse_picks_pllq_7)
     DMOD_TEST_EXPECT_EQ(cfg.pllq, 7U);
 }
 
-/* A SYSCLK target that is reachable within tolerance but whose VCO never
- * divides down to exactly 48 MHz through a valid PLLQ must fail the whole
- * configuration - not silently fall back to a wrong/default PLLQ, which is
- * exactly the bug this solver rewrite fixes. */
-DMOD_TEST_STEP(unsupported_combination_fails_clearly)
+/* A SYSCLK target with zero tolerance that no (PLLM, PLLN, PLLP) can reach
+ * at all must fail clearly. */
+DMOD_TEST_STEP(unreachable_sysclk_fails_clearly)
 {
     pll_config_t cfg = {0};
     uint32_t actual_freq = 0;
 
-    int rc = stm32_calculate_pll_config(100000000ULL, 0, 25000000U, &f7_limits, &cfg, &actual_freq);
+    int rc = stm32_calculate_pll_config(215999999ULL, 0, 25000000U, &f7_limits, &cfg, &actual_freq);
 
     DMOD_TEST_EXPECT_EQ(rc, -1);
+}
+
+/* SYSCLK accuracy is non-negotiable and must never be sacrificed for a
+ * better CLK48 - but CLK48 itself is best-effort: 180 MHz from an 8 MHz HSE
+ * can only ever reach VCO=360MHz (VCO=720MHz for PLLP=4 exceeds the 432MHz
+ * VCO ceiling), and 360/48 is not an integer, so no PLLQ hits exactly
+ * 48 MHz. The solver must still land exactly on 180MHz and pick the
+ * closest achievable CLK48 (45MHz via PLLQ=8) instead of failing the whole
+ * configuration - this exact (family, target, source) triple is real:
+ * see configs/mcu/stm32f429zi.ini and 6 other boards/MCUs in this repo. */
+DMOD_TEST_STEP(sysclk_exact_clk48_best_effort_when_unreachable)
+{
+    pll_config_t cfg = {0};
+    uint32_t actual_freq = 0;
+
+    int rc = stm32_calculate_pll_config(180000000ULL, 0, 8000000U, &f4_limits, &cfg, &actual_freq);
+
+    DMOD_TEST_EXPECT_EQ(rc, 0);
+    DMOD_TEST_EXPECT_EQ(actual_freq, 180000000U);
+    DMOD_TEST_EXPECT_EQ(cfg.pllq, 8U);
+}
+
+/* Regression coverage for every (family, target SYSCLK, HSE) combination
+ * actually configured somewhere in this repo (configs/mcu/*.ini and
+ * configs/board/*.ini) - the solver rewrite that made CLK48 a hard
+ * constraint originally broke 8 of these outright (100/180 MHz targets
+ * have no exact-48MHz solution - see the test above.) SYSCLK must always
+ * land exactly on target regardless of what CLK48 ends up being. */
+typedef struct { uint64_t target; uint32_t osc; int is_f7; } known_config_t;
+
+static const known_config_t known_configs[] = {
+    /* stm32f401re, nucleo-f401re */         {84000000ULL,  8000000U, 0},
+    /* stm32f405rg, stm32f407vg, stm32f4-discovery */ {168000000ULL, 8000000U, 0},
+    /* stm32f411re, nucleo-f411re */         {100000000ULL, 8000000U, 0},
+    /* stm32f429zi, f439zi, f446re, f469ni, nucleo-f446re, f429i-discovery */ {180000000ULL, 8000000U, 0},
+    /* stm32f722re, f746zg, f767zi, f769ni, nucleo-f767zi */ {216000000ULL, 8000000U, 1},
+    /* stm32f746g-disco, stm32f769i-discovery */ {216000000ULL, 25000000U, 1},
+};
+
+DMOD_TEST_STEP(every_known_board_config_reaches_exact_sysclk)
+{
+    size_t n = sizeof(known_configs) / sizeof(known_configs[0]);
+    for (size_t i = 0; i < n; i++) {
+        const known_config_t* kc = &known_configs[i];
+        const clock_limits_t* limits = kc->is_f7 ? &f7_limits : &f4_limits;
+        pll_config_t cfg = {0};
+        uint32_t actual_freq = 0;
+
+        int rc = stm32_calculate_pll_config(kc->target, 1000, kc->osc, limits, &cfg, &actual_freq);
+
+        DMOD_TEST_EXPECT_EQ(rc, 0);
+        DMOD_TEST_EXPECT_EQ(actual_freq, (uint32_t)kc->target);
+    }
 }
 
 /* stm32_get_clk48_freq() must derive its answer from the PLLM/PLLN/PLLQ

@@ -46,7 +46,8 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
         return -1;
     }
 
-    uint32_t best_error = 0xFFFFFFFFU;
+    uint32_t best_sysclk_error = 0xFFFFFFFFU;
+    uint32_t best_clk48_error = 0xFFFFFFFFU;
     uint32_t best_actual_freq = 0;
     pll_config_t best_config = {0};
     int found = 0;
@@ -82,57 +83,68 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
             uint32_t calc_actual_freq = vco / pllp;
 
             /* Calculate error */
-            uint32_t error;
+            uint32_t sysclk_error;
             if (calc_actual_freq > target_freq_32) {
-                error = calc_actual_freq - target_freq_32;
+                sysclk_error = calc_actual_freq - target_freq_32;
             } else {
-                error = target_freq_32 - calc_actual_freq;
+                sysclk_error = target_freq_32 - calc_actual_freq;
             }
 
-            if (error > tolerance_32) {
+            /* SYSCLK accuracy is non-negotiable: candidates outside the
+             * caller's tolerance are never acceptable, no matter how good
+             * their CLK48 would be. */
+            if (sysclk_error > tolerance_32) {
                 continue;
             }
 
-            /* This VCO/PLLP pair satisfies SYSCLK, but the whole
-             * configuration is only usable if the SAME VCO also divides
-             * down to exactly 48 MHz through a valid PLLQ - USB/SDIO/RNG
-             * share this one divider, so it is not optional. Candidates
-             * that can't reach 48 MHz are skipped entirely rather than
-             * accepted with a wrong/default PLLQ. */
-            if (vco % STM32_CLK48_TARGET_HZ != 0U) {
-                continue;
-            }
-            uint32_t pllq = vco / STM32_CLK48_TARGET_HZ;
-            if (pllq < limits->pllq_min || pllq > limits->pllq_max) {
-                continue;
+            /* This VCO does not have to divide evenly by any PLLQ - for
+             * some (SYSCLK, source) combinations no PLLQ can reach exactly
+             * 48 MHz within the VCO limits (e.g. 180 MHz from an 8 MHz HSE
+             * only ever reaches VCO=360MHz, and 360/48 is not an integer).
+             * Rather than failing SYSCLK configuration entirely over that,
+             * pick whichever PLLQ gets closest and let the caller read the
+             * real result back via dmclk_port_get_domain_frequency(). */
+            uint32_t best_pllq_for_vco = 0;
+            uint32_t best_clk48_error_for_vco = 0xFFFFFFFFU;
+            for (uint32_t pllq = limits->pllq_min; pllq <= limits->pllq_max; pllq++) {
+                uint32_t clk48 = vco / pllq;
+                uint32_t clk48_error;
+                if (clk48 > STM32_CLK48_TARGET_HZ) {
+                    clk48_error = clk48 - STM32_CLK48_TARGET_HZ;
+                } else {
+                    clk48_error = STM32_CLK48_TARGET_HZ - clk48;
+                }
+                if (clk48_error < best_clk48_error_for_vco) {
+                    best_clk48_error_for_vco = clk48_error;
+                    best_pllq_for_vco = pllq;
+                }
             }
 
-            /* Check if this is the best configuration so far */
-            if (error < best_error) {
-                best_error = error;
+            /* Rank by SYSCLK accuracy first (required to even get here
+             * within tolerance, but candidates can still differ), then by
+             * CLK48 accuracy as the tiebreaker between SYSCLK-equivalent
+             * candidates - e.g. more than one PLLM can hit the exact same
+             * SYSCLK through a different VCO with a better 48 MHz fit. */
+            int is_better = (sysclk_error < best_sysclk_error) ||
+                            (sysclk_error == best_sysclk_error && best_clk48_error_for_vco < best_clk48_error);
+
+            if (is_better) {
+                best_sysclk_error = sysclk_error;
+                best_clk48_error = best_clk48_error_for_vco;
                 best_actual_freq = calc_actual_freq;
                 best_config.pllm = pllm;
                 best_config.plln = plln;
                 best_config.pllp = pllp;
-                best_config.pllq = pllq;
+                best_config.pllq = best_pllq_for_vco;
                 found = 1;
-
-                /* Perfect match found */
-                if (error == 0) {
-                    break;
-                }
             }
-        }
-
-        if (found && best_error == 0) {
-            break;
         }
     }
 
     if (!found) {
-        /* No (PLLM, PLLN, PLLP) satisfying SYSCLK within tolerance also
-         * divides down to exactly 48 MHz through a valid PLLQ - fail
-         * clearly instead of silently programming an incorrect CLK48. */
+        /* No (PLLM, PLLN, PLLP) can reach the target SYSCLK within
+         * tolerance at all - fail clearly rather than programming
+         * something out of spec. */
         return -1;
     }
 
