@@ -24,6 +24,8 @@ static const clock_limits_t stm32f4_limits = {
     .plln_max = STM32F4_PLLN_MAX,
     .pllp_min = STM32F4_PLLP_MIN,
     .pllp_max = STM32F4_PLLP_MAX,
+    .pllq_min = STM32F4_PLLQ_MIN,
+    .pllq_max = STM32F4_PLLQ_MAX,
     .flash_latency_table = stm32f4_flash_latency,
     .flash_latency_count = STM32F4_FLASH_LATENCY_COUNT,
 };
@@ -247,6 +249,32 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, 
         current_sysclk = freq;
     }
     return (dmclk_frequency_t)current_sysclk;
+}
+
+/**
+ * @brief Get a named peripheral clock domain's frequency
+ *
+ * On STM32F4 the sdio/usb/rng domains are all the same physical signal (the
+ * PLL's Q-divider output) - a family with genuinely independent clocks for
+ * each would return a different value per domain instead.
+ *
+ * @return dmclk_frequency_t Frequency in Hz, or 0 for an unrecognized
+ *         domain or if the PLL isn't currently driving the system clock
+ */
+dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domain_t domain ) )
+{
+    switch (domain) {
+        case dmclk_domain_sdio:
+        case dmclk_domain_usb:
+        case dmclk_domain_rng:
+        {
+            volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
+            uint32_t pll_input_freq = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) ? current_hse_freq : HSI_VALUE;
+            return (dmclk_frequency_t)stm32_get_clk48_freq(STM32F4_RCC_BASE, pll_input_freq);
+        }
+        default:
+            return 0;
+    }
 }
 
 /* Fallback for targets where DWT CYCCNT is unavailable */

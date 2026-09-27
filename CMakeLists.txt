@@ -72,6 +72,8 @@ add_subdirectory(src/port)
 #               Test Subdirectories
 # ======================================================================
 add_subdirectory(tests/dmclk-test)
+enable_testing()
+add_subdirectory(tests/pll-solver-test)
 
 # ======================================================================
 #               dmclk Module Configuration

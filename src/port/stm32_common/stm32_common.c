@@ -46,7 +46,8 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
         return -1;
     }
 
-    uint32_t best_error = 0xFFFFFFFFU;
+    uint32_t best_sysclk_error = 0xFFFFFFFFU;
+    uint32_t best_clk48_error = 0xFFFFFFFFU;
     uint32_t best_actual_freq = 0;
     pll_config_t best_config = {0};
     int found = 0;
@@ -54,7 +55,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
     /* Try different PLLM values */
     for (uint32_t pllm = limits->pllm_min; pllm <= limits->pllm_max; pllm++) {
         uint32_t pll_in = source_freq / pllm;
-        
+
         /* Check if PLL input frequency is within valid range */
         if (pll_in < limits->pll_in_min || pll_in > limits->pll_in_max) {
             continue;
@@ -64,7 +65,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
         for (uint32_t pllp = limits->pllp_min; pllp <= limits->pllp_max; pllp += 2) {
             /* Calculate required PLLN */
             uint32_t plln = (target_freq_32 * pllp) / pll_in;
-            
+
             /* Check if PLLN is within valid range */
             if (plln < limits->plln_min || plln > limits->plln_max) {
                 continue;
@@ -72,7 +73,7 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
 
             /* Calculate VCO frequency */
             uint32_t vco = pll_in * plln;
-            
+
             /* Check if VCO frequency is within valid range */
             if (vco < limits->vco_min || vco > limits->vco_max) {
                 continue;
@@ -80,38 +81,70 @@ int stm32_calculate_pll_config(dmclk_frequency_t target_freq,
 
             /* Calculate actual output frequency */
             uint32_t calc_actual_freq = vco / pllp;
-            
+
             /* Calculate error */
-            uint32_t error;
+            uint32_t sysclk_error;
             if (calc_actual_freq > target_freq_32) {
-                error = calc_actual_freq - target_freq_32;
+                sysclk_error = calc_actual_freq - target_freq_32;
             } else {
-                error = target_freq_32 - calc_actual_freq;
+                sysclk_error = target_freq_32 - calc_actual_freq;
             }
 
-            /* Check if this is the best configuration so far */
-            if (error < best_error && error <= tolerance_32) {
-                best_error = error;
+            /* SYSCLK accuracy is non-negotiable: candidates outside the
+             * caller's tolerance are never acceptable, no matter how good
+             * their CLK48 would be. */
+            if (sysclk_error > tolerance_32) {
+                continue;
+            }
+
+            /* This VCO does not have to divide evenly by any PLLQ - for
+             * some (SYSCLK, source) combinations no PLLQ can reach exactly
+             * 48 MHz within the VCO limits (e.g. 180 MHz from an 8 MHz HSE
+             * only ever reaches VCO=360MHz, and 360/48 is not an integer).
+             * Rather than failing SYSCLK configuration entirely over that,
+             * pick whichever PLLQ gets closest and let the caller read the
+             * real result back via dmclk_port_get_domain_frequency(). */
+            uint32_t best_pllq_for_vco = 0;
+            uint32_t best_clk48_error_for_vco = 0xFFFFFFFFU;
+            for (uint32_t pllq = limits->pllq_min; pllq <= limits->pllq_max; pllq++) {
+                uint32_t clk48 = vco / pllq;
+                uint32_t clk48_error;
+                if (clk48 > STM32_CLK48_TARGET_HZ) {
+                    clk48_error = clk48 - STM32_CLK48_TARGET_HZ;
+                } else {
+                    clk48_error = STM32_CLK48_TARGET_HZ - clk48;
+                }
+                if (clk48_error < best_clk48_error_for_vco) {
+                    best_clk48_error_for_vco = clk48_error;
+                    best_pllq_for_vco = pllq;
+                }
+            }
+
+            /* Rank by SYSCLK accuracy first (required to even get here
+             * within tolerance, but candidates can still differ), then by
+             * CLK48 accuracy as the tiebreaker between SYSCLK-equivalent
+             * candidates - e.g. more than one PLLM can hit the exact same
+             * SYSCLK through a different VCO with a better 48 MHz fit. */
+            int is_better = (sysclk_error < best_sysclk_error) ||
+                            (sysclk_error == best_sysclk_error && best_clk48_error_for_vco < best_clk48_error);
+
+            if (is_better) {
+                best_sysclk_error = sysclk_error;
+                best_clk48_error = best_clk48_error_for_vco;
                 best_actual_freq = calc_actual_freq;
                 best_config.pllm = pllm;
                 best_config.plln = plln;
                 best_config.pllp = pllp;
-                best_config.pllq = 4; /* Default value for USB, can be optimized */
+                best_config.pllq = best_pllq_for_vco;
                 found = 1;
-
-                /* Perfect match found */
-                if (error == 0) {
-                    break;
-                }
             }
-        }
-        
-        if (found && best_error == 0) {
-            break;
         }
     }
 
     if (!found) {
+        /* No (PLLM, PLLN, PLLP) can reach the target SYSCLK within
+         * tolerance at all - fail clearly rather than programming
+         * something out of spec. */
         return -1;
     }
 
@@ -337,6 +370,31 @@ uint32_t stm32_get_sysclk_freq(uintptr_t rcc_base, uint32_t hsi_value)
     }
 
     return sysclk;
+}
+
+uint32_t stm32_get_clk48_freq(uintptr_t rcc_base, uint32_t pll_input_freq)
+{
+    volatile RCC_TypeDef *RCC = (RCC_TypeDef *)rcc_base;
+    uint32_t sws = (RCC->CFGR & RCC_CFGR_SWS_Msk) >> RCC_CFGR_SWS_Pos;
+
+    /* CLK48 only exists while the PLL is actually driving the system -
+     * with HSI/HSE selected directly the PLL (and its Q-divider) may be
+     * off or configured for something else entirely. */
+    if (sws != 2 || pll_input_freq == 0U) {
+        return 0U;
+    }
+
+    uint32_t pllcfgr = RCC->PLLCFGR;
+    uint32_t pllm = (pllcfgr & RCC_PLLCFGR_PLLM_Msk) >> RCC_PLLCFGR_PLLM_Pos;
+    uint32_t plln = (pllcfgr & RCC_PLLCFGR_PLLN_Msk) >> RCC_PLLCFGR_PLLN_Pos;
+    uint32_t pllq = (pllcfgr & RCC_PLLCFGR_PLLQ_Msk) >> RCC_PLLCFGR_PLLQ_Pos;
+
+    if (pllm == 0U || pllq == 0U) {
+        return 0U;
+    }
+
+    uint32_t vco = (pll_input_freq / pllm) * plln;
+    return vco / pllq;
 }
 
 int stm32_delay_cycles_dwt(uint64_t target_cycles, uint64_t *elapsed_cycles)

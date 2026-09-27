@@ -21,6 +21,38 @@ dmod_dmclk_port_api(1.0, void, _delay_us, ( dmclk_time_us_t time_us) );
 dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_current_frequency, ( void ) );
 
 /**
+ * @brief Named peripheral clock domain, for ports that expose more than
+ * just the main system clock.
+ *
+ * Named by what the domain is *for*, not by how any particular family
+ * derives it - on STM32F4/F7 all three values below resolve to the same
+ * physical signal (one PLL Q-divider), but a port for hardware where they
+ * are genuinely independent clocks would return a different frequency for
+ * each. A port that has no equivalent for a given value returns 0 for it -
+ * every dmclk_port implementation must define _get_domain_frequency(), but
+ * "return 0" is a perfectly valid implementation for domains it lacks.
+ */
+typedef enum
+{
+    dmclk_domain_sdio = 0,  /**< Clock feeding SDIO/SDMMC peripherals */
+    dmclk_domain_usb,       /**< Clock feeding USB (OTG FS/HS) peripherals */
+    dmclk_domain_rng,       /**< Clock feeding the RNG peripheral */
+} dmclk_domain_t;
+
+/**
+ * @brief Get the actual, currently-programmed frequency of a named
+ * peripheral clock domain.
+ *
+ * Read back from hardware registers rather than cached from the last
+ * configuration request, the same as _get_current_frequency().
+ *
+ * @param domain Which named domain to query
+ * @return dmclk_frequency_t Frequency in Hz, or 0 if this port has no such
+ *         domain or it isn't currently active
+ */
+dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domain_t domain ) );
+
+/**
  * @brief Busy-wait delay for a given number of seconds and return consumed CPU cycles.
  *
  * Port implementations should run in a critical section so interrupt latency does not

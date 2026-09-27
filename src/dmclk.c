@@ -246,6 +246,15 @@ static int read_configuration(dmdrvi_context_t context, int command, void* arg)
         case dmclk_ioctl_cmd_get_frequency:
             *(dmclk_frequency_t*)arg = context->current_frequency;
             break;
+        case dmclk_ioctl_cmd_get_domain_frequency:
+        {
+            /* Always read back from the port rather than a cached value -
+             * unlike SYSCLK, nothing else in this driver tracks domain
+             * frequencies. */
+            dmclk_domain_query_t* query = (dmclk_domain_query_t*)arg;
+            query->frequency = dmclk_port_get_domain_frequency(query->domain);
+            break;
+        }
         default:
             DMOD_LOG_ERROR("Invalid configuration command %d in read_configuration\n", command);
             ret = -EINVAL;
