@@ -1,6 +1,5 @@
 #define DMOD_ENABLE_REGISTRATION    ON
 #include "dmclk_port.h"
-#include "dmclk_stm32.h"
 #include "../stm32_common/stm32_common.h"
 #include "port/stm32_common_regs.h"
 #include "port/stm32f7_regs.h"
@@ -322,15 +321,27 @@ dmclk_frequency_t dmclk_port_get_current_frequency(void)
 }
 
 /**
- * @brief Get the actual, currently-programmed CLK48 frequency (STM32-only,
- * see dmclk_stm32.h - deliberately not part of the generic dmclk_port DIF)
+ * @brief Get a named peripheral clock domain's frequency
  *
- * @return dmclk_frequency_t CLK48 frequency in Hz, or 0 if the PLL isn't
- *         currently driving the system clock
+ * On STM32F7 the sdio/usb/rng domains are all the same physical signal (the
+ * PLL's Q-divider output) - a family with genuinely independent clocks for
+ * each would return a different value per domain instead.
+ *
+ * @return dmclk_frequency_t Frequency in Hz, or 0 for an unrecognized
+ *         domain or if the PLL isn't currently driving the system clock
  */
-dmclk_frequency_t dmclk_stm32_get_clk48_frequency(void)
+dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domain_t domain ) )
 {
-    volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
-    uint32_t pll_input_freq = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) ? current_hse_freq : HSI_VALUE;
-    return (dmclk_frequency_t)stm32_get_clk48_freq(STM32F7_RCC_BASE, pll_input_freq);
+    switch (domain) {
+        case dmclk_domain_sdio:
+        case dmclk_domain_usb:
+        case dmclk_domain_rng:
+        {
+            volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
+            uint32_t pll_input_freq = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) ? current_hse_freq : HSI_VALUE;
+            return (dmclk_frequency_t)stm32_get_clk48_freq(STM32F7_RCC_BASE, pll_input_freq);
+        }
+        default:
+            return 0;
+    }
 }
