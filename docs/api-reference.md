@@ -37,7 +37,7 @@ Enumerates available clock sources.
 ```c
 typedef enum 
 {
-    dmclk_ioctl_cmd_get_frequency = 0x1000, /**< Get current clock frequency (DMDRVI_IOCTL_CUSTOM_BASE) */
+    dmclk_ioctl_cmd_get_frequency = DMDRVI_IOCTL_CUSTOM_BASE, /**< Get current clock frequency */
     dmclk_ioctl_cmd_set_source,          /**< Set clock source */
     dmclk_ioctl_cmd_get_source,          /**< Get clock source */
     dmclk_ioctl_cmd_set_tolerance,       /**< Set frequency tolerance */
@@ -53,7 +53,7 @@ typedef enum
 ```
 
 IOCTL commands for clock device control. They are numbered from
-`DMDRVI_IOCTL_CUSTOM_BASE` (0x1000) so they do not collide with the standard
+`DMDRVI_IOCTL_CUSTOM_BASE` so they do not collide with the standard
 `DMDRVI_IOCTL_*` commands; any command outside this range (e.g. the
 `DMDRVI_IOCTL_BLOCK_GET_INFO` / `DMDRVI_IOCTL_MONITOR_GET_POLICY` probes sent by
 dmdevfs) is answered with `-ENOTTY`.

@@ -6,11 +6,6 @@
 #include <errno.h>
 #include <string.h>
 
-#ifdef DMDRVI_IOCTL_CUSTOM_BASE
-_Static_assert(dmclk_ioctl_cmd_get_frequency == DMDRVI_IOCTL_CUSTOM_BASE,
-               "dmclk private ioctl commands must start at DMDRVI_IOCTL_CUSTOM_BASE");
-#endif
-
 // Magic set to DCLK
 #define DMCLK_CONTEXT_MAGIC    0x44434C4B
 
