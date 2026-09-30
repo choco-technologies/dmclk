@@ -6,6 +6,11 @@
 #include <errno.h>
 #include <string.h>
 
+#ifdef DMDRVI_IOCTL_CUSTOM_BASE
+_Static_assert(dmclk_ioctl_cmd_get_frequency == DMDRVI_IOCTL_CUSTOM_BASE,
+               "dmclk private ioctl commands must start at DMDRVI_IOCTL_CUSTOM_BASE");
+#endif
+
 // Magic set to DCLK
 #define DMCLK_CONTEXT_MAGIC    0x44434C4B
 
@@ -458,10 +463,12 @@ dmod_dmdrvi_dif_api_declaration(2.0, dmclk, int, _ioctl, ( dmdrvi_context_t cont
         return -EINVAL;
     }
 
-    if(command >= dmclk_ioctl_cmd_max)
+    /* Not an error: generic clients (e.g. dmdevfs probing every node for the
+     * block/monitor classes) send standard DMDRVI_IOCTL_* commands a clock
+     * does not implement - answer -ENOTTY quietly, as dmdrvi expects. */
+    if(command < dmclk_ioctl_cmd_get_frequency || command >= dmclk_ioctl_cmd_max)
     {
-        DMOD_LOG_ERROR("Invalid ioctl command %d in dmclk_dmdrvi_ioctl\n", command);
-        return -EINVAL;
+        return -ENOTTY;
     }
     else if(command == dmclk_ioctl_cmd_reconfigure)
     {

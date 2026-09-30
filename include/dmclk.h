@@ -22,7 +22,10 @@ typedef enum
  */
 typedef enum 
 {
-    dmclk_ioctl_cmd_get_frequency = 1,   /**< Get current clock frequency */
+    /* Private commands start at DMDRVI_IOCTL_CUSTOM_BASE (0x1000, dmdrvi_ioctl.h)
+     * so they never collide with the standard DMDRVI_IOCTL_* commands (network,
+     * block, monitor) that dmdevfs and other generic clients send to any node. */
+    dmclk_ioctl_cmd_get_frequency = 0x1000, /**< Get current clock frequency */
     dmclk_ioctl_cmd_set_source,          /**< Set clock source */
     dmclk_ioctl_cmd_get_source,          /**< Get clock source */
     dmclk_ioctl_cmd_set_tolerance,       /**< Set frequency tolerance */
