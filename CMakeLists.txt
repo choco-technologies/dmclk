@@ -23,7 +23,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ======================================================================
 # Allow version to be passed as a parameter, default to 0.1
 if(NOT DEFINED DMOD_MODULE_VERSION)
-    set(DMOD_MODULE_VERSION "0.1" CACHE STRING "DMOD module version")
+    set(DMOD_MODULE_VERSION "1.2" CACHE STRING "DMOD module version")
 endif()
 
 # ======================================================================

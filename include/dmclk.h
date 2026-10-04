@@ -5,6 +5,7 @@
 #include "dmdrvi_ioctl.h"
 #include "dmod.h"
 #include "dmclk_defs.h"
+#include "dmclk_sai.h"
 #include "dmclk_port.h"
 
 /**

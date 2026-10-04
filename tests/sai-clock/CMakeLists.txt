@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.18)
+project(dmclk_sai_native C)
+enable_testing()
+add_executable(sai_clock_test sai_clock_test.c ../../src/port/stm32f7/sai_solver.c)
+target_include_directories(sai_clock_test PRIVATE stubs ../../include ../../src/port/stm32f7)
+target_compile_options(sai_clock_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+add_test(NAME sai_clock COMMAND sai_clock_test)

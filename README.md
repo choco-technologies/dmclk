@@ -225,3 +225,5 @@ For issues, questions, or contributions:
 - Open an issue on GitHub
 - Check the documentation in `docs/`
 - Use `dmf-man dmclk` for command-line help
+
+See [SAI kernel clock reservations](docs/sai-clock.md) for audio clocks.

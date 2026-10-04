@@ -29,6 +29,10 @@ if(DMCLK_MCU_SERIES MATCHES "^stm32")
     set(COMMON_SOURCES stm32_common/stm32_common.c)
 endif()
 
+if(DMCLK_MCU_SERIES STREQUAL "stm32f7")
+    list(APPEND COMMON_SOURCES stm32f7/sai_clock.c stm32f7/sai_solver.c)
+endif()
+
 #
 #   dmod_add_library - create a library module
 #   it has the same signature as add_library

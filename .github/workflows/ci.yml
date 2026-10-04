@@ -19,6 +19,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Test SAI clock solver and ownership
+        run: |
+          cmake -S tests/sai-clock -B build-sai-native
+          cmake --build build-sai-native
+          ctest --test-dir build-sai-native --output-on-failure
+
       - name: Build pll_solver_test
         run: |
           set -e

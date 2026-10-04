@@ -544,3 +544,13 @@ dmod_dmdrvi_dif_api_declaration(2.0, dmclk, int, _stat, ( dmdrvi_context_t conte
     stat->mode = 0444; // Read-only permissions
     return 0;
 }
+
+dmod_dmclk_api_declaration(1.0, int, _sai_acquire, ( dmclk_domain_t domain, dmclk_frequency_t target, dmclk_frequency_t tolerance, dmclk_frequency_t *actual ) )
+{
+    return dmclk_port_sai_acquire(domain, target, tolerance, actual);
+}
+
+dmod_dmclk_api_declaration(1.0, int, _sai_release, ( dmclk_domain_t domain ) )
+{
+    return dmclk_port_sai_release(domain);
+}

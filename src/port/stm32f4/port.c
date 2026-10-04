@@ -327,3 +327,15 @@ dmod_dmclk_port_api_declaration(1.0, uint64_t, _delay, ( uint32_t seconds ) )
 
     return total_iterations * DELAY_CYCLES_PER_ITERATION;
 }
+
+#include <errno.h>
+dmod_dmclk_port_api_declaration(1.0, int, _sai_acquire, ( dmclk_domain_t domain, dmclk_frequency_t target, dmclk_frequency_t tolerance, dmclk_frequency_t *actual ) )
+{
+    (void)domain; (void)target; (void)tolerance; (void)actual;
+    return -ENOTSUP;
+}
+dmod_dmclk_port_api_declaration(1.0, int, _sai_release, ( dmclk_domain_t domain ) )
+{
+    (void)domain;
+    return -ENOTSUP;
+}

@@ -3,6 +3,8 @@
 #include "../stm32_common/stm32_common.h"
 #include "port/stm32_common_regs.h"
 #include "port/stm32f7_regs.h"
+#include "sai_clock.h"
+#include <errno.h>
 
 /* Static storage for current oscillator frequency */
 static uint32_t current_hse_freq = 0;
@@ -50,6 +52,9 @@ int dmod_init(const Dmod_Config_t *Config)
  */
 int dmod_deinit(void)
 {
+    int result = stm32f7_clock_begin();
+    if (result) return result;
+    stm32f7_clock_end();
     Dmod_Printf("DMDRVI interface module deinitialized (STM32F7)\n");
     return 0;
 }
@@ -62,7 +67,7 @@ int dmod_deinit(void)
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance) )
+static int configure_internal(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
     pll_config_t pll_config;
@@ -139,14 +144,12 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
+static int configure_external(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
     pll_config_t pll_config;
     uint32_t actual_freq = 0;
     
-    current_hse_freq = (uint32_t)oscillator_freq;
-
     /* Enable HSE */
     RCC->CR |= RCC_CR_HSEON;
     if (stm32_wait_clock_ready(STM32F7_RCC_BASE, RCC_CR_HSERDY, HSE_STARTUP_TIMEOUT) != 0) {
@@ -205,6 +208,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency
         return -1;
     }
 
+    current_hse_freq = (uint32_t)oscillator_freq;
     current_sysclk = actual_freq;
     return 0;
 }
@@ -224,11 +228,15 @@ int dmclk_port_configure_hibernatation(dmclk_frequency_t target_freq, dmclk_freq
      * For STM32F7, LSI runs at approximately 32 kHz
      * This is a simplified implementation that just returns the LSI frequency
      */
+    int result = stm32f7_clock_begin();
+    if (result) return result;
     if (target_freq > LSI_VALUE + tolerance || target_freq < LSI_VALUE - tolerance) {
+        stm32f7_clock_end();
         return -1; /* Cannot achieve target frequency with LSI */
     }
 
     current_sysclk = LSI_VALUE;
+    stm32f7_clock_end();
     return 0;
 }
 
@@ -332,6 +340,8 @@ dmclk_frequency_t dmclk_port_get_current_frequency(void)
  */
 dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domain_t domain ) )
 {
+    if (domain == dmclk_domain_sai1 || domain == dmclk_domain_sai2)
+        return stm32f7_sai_frequency(domain);
     switch (domain) {
         case dmclk_domain_sdio:
         case dmclk_domain_usb:
@@ -344,4 +354,27 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_domain_frequency, (
         default:
             return 0;
     }
+}
+dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance) )
+{
+    int result = stm32f7_clock_begin();
+    if (result != 0) return result;
+    result = configure_internal(target_freq, tolerance);
+    stm32f7_clock_end();
+    return result;
+}
+
+dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
+{
+    int result = stm32f7_clock_begin();
+    if (result != 0) return result;
+    result = configure_external(target_freq, tolerance, oscillator_freq);
+    stm32f7_clock_end();
+    return result;
+}
+
+uint32_t stm32f7_pll_source_frequency(void)
+{
+    volatile RCC_TypeDef *rcc = (RCC_TypeDef *)STM32F7_RCC_BASE;
+    return (rcc->PLLCFGR & RCC_PLLCFGR_PLLSRC) ? current_hse_freq : HSI_VALUE;
 }

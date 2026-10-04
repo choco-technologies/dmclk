@@ -60,3 +60,5 @@ Welcome to DMCLK documentation. This module provides clock configuration and man
 - DMOD Framework: https://github.com/choco-technologies/dmod
 - DMINI Module: https://github.com/choco-technologies/dmini
 - DMDRVI Interface: https://github.com/choco-technologies/dmdrvi
+
+- [SAI kernel clock reservations](sai-clock.md) — STM32F7 audio clocks

@@ -20,3 +20,9 @@ dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
 target_link_libraries(${DMOD_MODULE_NAME}
     dmclk_port_if
 )
+
+if(DMCLK_MCU_SERIES STREQUAL "stm32f7")
+    dmod_add_executable(dmclk_sai_test ${DMOD_MODULE_VERSION} sai_clock_hardware.c)
+    target_link_libraries(dmclk_sai_test dmclk_port_if)
+    target_include_directories(dmclk_sai_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+endif()

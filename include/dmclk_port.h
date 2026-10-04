@@ -3,41 +3,13 @@
 
 #include "dmod.h"
 #include "dmclk_port_defs.h"
-
-/**
- * @brief Clock frequency type in Hz
- */
-typedef uint64_t dmclk_frequency_t;
-
-/**
- * @brief Time type in microseconds
- */
-typedef uint64_t dmclk_time_us_t;
+#include "dmclk_types.h"
 
 dmod_dmclk_port_api(1.0, int, _configure_internal, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance) );
 dmod_dmclk_port_api(1.0, int, _configure_external, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) );
 dmod_dmclk_port_api(1.0, int, _configure_hibernatation, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) );
 dmod_dmclk_port_api(1.0, void, _delay_us, ( dmclk_time_us_t time_us) );
 dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_current_frequency, ( void ) );
-
-/**
- * @brief Named peripheral clock domain, for ports that expose more than
- * just the main system clock.
- *
- * Named by what the domain is *for*, not by how any particular family
- * derives it - on STM32F4/F7 all three values below resolve to the same
- * physical signal (one PLL Q-divider), but a port for hardware where they
- * are genuinely independent clocks would return a different frequency for
- * each. A port that has no equivalent for a given value returns 0 for it -
- * every dmclk_port implementation must define _get_domain_frequency(), but
- * "return 0" is a perfectly valid implementation for domains it lacks.
- */
-typedef enum
-{
-    dmclk_domain_sdio = 0,  /**< Clock feeding SDIO/SDMMC peripherals */
-    dmclk_domain_usb,       /**< Clock feeding USB (OTG FS/HS) peripherals */
-    dmclk_domain_rng,       /**< Clock feeding the RNG peripheral */
-} dmclk_domain_t;
 
 /**
  * @brief Get the actual, currently-programmed frequency of a named
@@ -69,5 +41,13 @@ dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domai
  */
 dmod_dmclk_port_api(1.0, uint64_t, _delay, ( uint32_t seconds ) );
 
+
+/** Reserve a SAI kernel clock. Thread context only; -EBUSY on conflict.
+ * target/tolerance are Hz. actual is only written on success. Compatible
+ * acquisitions share PLLI2S; release once per successful acquisition.
+ * Main clock reconfiguration is blocked while any reservation exists.
+ * Ports without this clock path return -ENOTSUP. */
+dmod_dmclk_port_api(1.0, int, _sai_acquire, ( dmclk_domain_t domain, dmclk_frequency_t target, dmclk_frequency_t tolerance, dmclk_frequency_t *actual ) );
+dmod_dmclk_port_api(1.0, int, _sai_release, ( dmclk_domain_t domain ) );
 
 #endif // DMCLK_PORT_H
