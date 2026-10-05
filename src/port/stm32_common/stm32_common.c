@@ -169,7 +169,7 @@ int stm32_configure_flash_latency(uint32_t sysclk_freq,
 
     volatile FLASH_TypeDef *FLASH = (FLASH_TypeDef *)flash_base;
     const struct { uint32_t max_freq; uint32_t latency; } *table = 
-        (const struct { uint32_t max_freq; uint32_t latency; } *)latency_table;
+        latency_table;
 
     uint32_t latency = 0;
     for (uint32_t i = 0; i < table_size; i++) {

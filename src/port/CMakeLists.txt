@@ -22,15 +22,8 @@ set(DMOD_STACK_SIZE         1024)
 # Path to the DMR file for this module
 set(DMOD_DMR_PATH           ${CMAKE_SOURCE_DIR}/dmclk_port.dmr)
 
-# Determine common source files based on MCU family
-set(COMMON_SOURCES "")
 if(DMCLK_MCU_SERIES MATCHES "^stm32")
-    # Add STM32 common implementation for all STM32 families
-    set(COMMON_SOURCES stm32_common/stm32_common.c)
-endif()
-
-if(DMCLK_MCU_SERIES STREQUAL "stm32f7")
-    list(APPEND COMMON_SOURCES stm32f7/sai_clock.c stm32f7/sai_solver.c)
+    add_subdirectory(stm32_common)
 endif()
 
 #
@@ -42,8 +35,11 @@ endif()
 dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
     # List of source files - can include C and C++ files
     ${DMCLK_MCU_SERIES}/port.c
-    ${COMMON_SOURCES}
 )
+
+if(DMCLK_MCU_SERIES MATCHES "^stm32")
+    dmclk_add_stm32_sources(${DMOD_MODULE_NAME})
+endif()
 
 target_include_directories(${DMOD_MODULE_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include

@@ -19,9 +19,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Test SAI clock solver and ownership
+      - name: Test STM32 clock port API and failure recovery
         run: |
-          cmake -S tests/sai-clock -B build-sai-native
+          cmake -S tests/ports/stm32 -B build-sai-native
           cmake --build build-sai-native
           ctest --test-dir build-sai-native --output-on-failure
 

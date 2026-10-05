@@ -1,15 +1,9 @@
-#define DMOD_ENABLE_REGISTRATION    ON
+#define DMOD_ENABLE_REGISTRATION ON
 #include "dmclk_port.h"
-#include "../stm32_common/stm32_common.h"
-#include "port/stm32_common_regs.h"
+#include "../stm32_common/clock.h"
 #include "port/stm32f4_regs.h"
 
-/* Static storage for current oscillator frequency */
-static uint32_t current_hse_freq = 0;
-static uint32_t current_sysclk = HSI_VALUE;
-
-/* Clock limits for STM32F4 */
-static const clock_limits_t stm32f4_limits = {
+static clock_limits_t stm32f4_limits = {
     .max_sysclk = STM32F4_MAX_SYSCLK,
     .max_hclk = STM32F4_MAX_HCLK,
     .max_pclk1 = STM32F4_MAX_PCLK1,
@@ -26,316 +20,26 @@ static const clock_limits_t stm32f4_limits = {
     .pllp_max = STM32F4_PLLP_MAX,
     .pllq_min = STM32F4_PLLQ_MIN,
     .pllq_max = STM32F4_PLLQ_MAX,
-    .flash_latency_table = stm32f4_flash_latency,
     .flash_latency_count = STM32F4_FLASH_LATENCY_COUNT,
 };
 
-/**
- * @brief Initialize the DMDRVI module
- * 
- * @param Config Pointer to Dmod_Config_t structure with configuration parameters
- * 
- * @return int 0 on success, non-zero on failure
- */
-int dmod_init(const Dmod_Config_t *Config)
+static stm32_clock_config_t clock_config = {
+    .rcc_base = STM32F4_RCC_BASE,
+    .flash_base = STM32F4_FLASH_BASE,
+};
+
+int dmod_init(const Dmod_Config_t *config)
 {
-    Dmod_Printf("DMDRVI interface module initialized (STM32F4)\n");
+    (void)config;
+    /* DMF data pointers must be assigned after the module is relocated. */
+    stm32f4_limits.flash_latency_table = stm32f4_flash_latency;
+    clock_config.limits = &stm32f4_limits;
+    stm32_clock_init(&clock_config);
+    Dmod_Printf("dmclk port initialized (stm32f4)\n");
     return 0;
 }
 
-/**
- * @brief Deinitialize the DMDRVI module
- * 
- * @return int 0 on success, non-zero on failure
- */
 int dmod_deinit(void)
 {
-    Dmod_Printf("DMDRVI interface module deinitialized (STM32F4)\n");
-    return 0;
-}
-
-/**
- * @brief Configure internal clock source (HSI + PLL)
- * 
- * @param target_freq Target frequency in Hz
- * @param tolerance Tolerance in Hz
- * 
- * @return int 0 on success, non-zero on failure
- */
-dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance) )
-{
-    volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
-    pll_config_t pll_config;
-    uint32_t actual_freq = 0;
-    
-    /* Enable HSI if not already enabled */
-    RCC->CR |= RCC_CR_HSION;
-    if (stm32_wait_clock_ready(STM32F4_RCC_BASE, RCC_CR_HSIRDY, HSI_STARTUP_TIMEOUT) != 0) {
-        return -1;
-    }
-
-    /* Calculate PLL configuration */
-    if (stm32_calculate_pll_config(target_freq, tolerance, HSI_VALUE, 
-                                    &stm32f4_limits, &pll_config, &actual_freq) != 0) {
-        return -1;
-    }
-
-    /* Configure Flash latency */
-    if (stm32_configure_flash_latency(actual_freq, STM32F4_FLASH_BASE,
-                                      stm32f4_flash_latency, STM32F4_FLASH_LATENCY_COUNT) != 0) {
-        return -1;
-    }
-
-    /* Disable PLL before configuration */
-    RCC->CR &= ~RCC_CR_PLLON;
-    while (RCC->CR & RCC_CR_PLLRDY) {
-        /* Wait for PLL to unlock */
-    }
-
-    /* Configure PLL */
-    uint32_t pllcfgr = 0;
-    pllcfgr |= (pll_config.pllm << RCC_PLLCFGR_PLLM_Pos) & RCC_PLLCFGR_PLLM_Msk;
-    pllcfgr |= (pll_config.plln << RCC_PLLCFGR_PLLN_Pos) & RCC_PLLCFGR_PLLN_Msk;
-    pllcfgr |= (((pll_config.pllp / 2) - 1) << RCC_PLLCFGR_PLLP_Pos) & RCC_PLLCFGR_PLLP_Msk;
-    pllcfgr |= (pll_config.pllq << RCC_PLLCFGR_PLLQ_Pos) & RCC_PLLCFGR_PLLQ_Msk;
-    /* PLL source is HSI (bit 22 = 0) */
-    RCC->PLLCFGR = pllcfgr;
-
-    /* Enable PLL */
-    RCC->CR |= RCC_CR_PLLON;
-    if (stm32_wait_clock_ready(STM32F4_RCC_BASE, RCC_CR_PLLRDY, PLL_STARTUP_TIMEOUT) != 0) {
-        return -1;
-    }
-
-    /* Configure bus prescalers */
-    if (stm32_configure_bus_prescalers(STM32F4_RCC_BASE, actual_freq, &stm32f4_limits) != 0) {
-        return -1;
-    }
-
-    /* Switch system clock to PLL */
-    if (stm32_switch_sysclk(STM32F4_RCC_BASE, RCC_CFGR_SW_PLL) != 0) {
-        return -1;
-    }
-
-    current_sysclk = actual_freq;
-    return 0;
-}
-
-/**
- * @brief Configure external clock source (HSE + PLL)
- * 
- * @param target_freq Target frequency in Hz
- * @param tolerance Tolerance in Hz
- * @param oscillator_freq Oscillator frequency in Hz
- * 
- * @return int 0 on success, non-zero on failure
- */
-dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
-{
-    volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
-    pll_config_t pll_config;
-    uint32_t actual_freq = 0;
-    
-    current_hse_freq = (uint32_t)oscillator_freq;
-
-    /* Enable HSE */
-    RCC->CR |= RCC_CR_HSEON;
-    if (stm32_wait_clock_ready(STM32F4_RCC_BASE, RCC_CR_HSERDY, HSE_STARTUP_TIMEOUT) != 0) {
-        return -1;
-    }
-
-    /* Calculate PLL configuration */
-    if (stm32_calculate_pll_config(target_freq, tolerance, (uint32_t)oscillator_freq, 
-                                    &stm32f4_limits, &pll_config, &actual_freq) != 0) {
-        return -1;
-    }
-
-    /* Configure Flash latency */
-    if (stm32_configure_flash_latency(actual_freq, STM32F4_FLASH_BASE,
-                                      stm32f4_flash_latency, STM32F4_FLASH_LATENCY_COUNT) != 0) {
-        return -1;
-    }
-
-    /* Disable PLL before configuration */
-    RCC->CR &= ~RCC_CR_PLLON;
-    while (RCC->CR & RCC_CR_PLLRDY) {
-        /* Wait for PLL to unlock */
-    }
-
-    /* Configure PLL */
-    uint32_t pllcfgr = 0;
-    pllcfgr |= (pll_config.pllm << RCC_PLLCFGR_PLLM_Pos) & RCC_PLLCFGR_PLLM_Msk;
-    pllcfgr |= (pll_config.plln << RCC_PLLCFGR_PLLN_Pos) & RCC_PLLCFGR_PLLN_Msk;
-    pllcfgr |= (((pll_config.pllp / 2) - 1) << RCC_PLLCFGR_PLLP_Pos) & RCC_PLLCFGR_PLLP_Msk;
-    pllcfgr |= (pll_config.pllq << RCC_PLLCFGR_PLLQ_Pos) & RCC_PLLCFGR_PLLQ_Msk;
-    pllcfgr |= RCC_PLLCFGR_PLLSRC; /* PLL source is HSE (bit 22 = 1) */
-    RCC->PLLCFGR = pllcfgr;
-
-    /* Enable PLL */
-    RCC->CR |= RCC_CR_PLLON;
-    if (stm32_wait_clock_ready(STM32F4_RCC_BASE, RCC_CR_PLLRDY, PLL_STARTUP_TIMEOUT) != 0) {
-        return -1;
-    }
-
-    /* Configure bus prescalers */
-    if (stm32_configure_bus_prescalers(STM32F4_RCC_BASE, actual_freq, &stm32f4_limits) != 0) {
-        return -1;
-    }
-
-    /* Switch system clock to PLL */
-    if (stm32_switch_sysclk(STM32F4_RCC_BASE, RCC_CFGR_SW_PLL) != 0) {
-        return -1;
-    }
-
-    current_sysclk = actual_freq;
-    return 0;
-}
-
-/**
- * @brief Configure hibernation clock source (LSI)
- * 
- * @param target_freq Target frequency in Hz
- * @param tolerance Tolerance in Hz
- * @param oscillator_freq Oscillator frequency in Hz
- * 
- * @return int 0 on success, non-zero on failure
- */
-dmod_dmclk_port_api_declaration(1.0, int, _configure_hibernatation, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
-{
-    /* LSI is typically used for hibernation/low-power modes
-     * For STM32F4, LSI runs at approximately 32 kHz
-     * This is a simplified implementation that just returns the LSI frequency
-     */
-    if (target_freq > LSI_VALUE + tolerance || target_freq < LSI_VALUE - tolerance) {
-        return -1; /* Cannot achieve target frequency with LSI */
-    }
-
-    current_sysclk = LSI_VALUE;
-    return 0;
-}
-
-/**
- * @brief Delay for a specified time in microseconds
- * 
- * @param time_us Time to delay in microseconds
- */
-dmod_dmclk_port_api_declaration(1.0, void, _delay_us, ( dmclk_time_us_t time_us) )
-{
-    /* Simple delay loop
-     * This is a very basic implementation - cycles depend on sysclk
-     * For accurate timing, would need to use SysTick or a timer
-     */
-    uint32_t cycles_per_us = current_sysclk / 1000000U;
-    uint32_t cycles = (uint32_t)(time_us * cycles_per_us);
-    
-    /* Each loop iteration takes approximately 4 cycles */
-    cycles /= 4U;
-    
-    for (uint32_t i = 0; i < cycles; i++) {
-        __asm__ volatile ("nop");
-    }
-}
-
-/**
- * @brief Get the current clock frequency
- * 
- * @return dmclk_frequency_t Current frequency in Hz
- */
-dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_current_frequency, ( void ) )
-{
-    /* Return cached value or calculate from registers */
-    uint32_t freq = stm32_get_sysclk_freq(STM32F4_RCC_BASE, HSI_VALUE);
-    if (freq > 0) {
-        current_sysclk = freq;
-    }
-    return (dmclk_frequency_t)current_sysclk;
-}
-
-/**
- * @brief Get a named peripheral clock domain's frequency
- *
- * On STM32F4 the sdio/usb/rng domains are all the same physical signal (the
- * PLL's Q-divider output) - a family with genuinely independent clocks for
- * each would return a different value per domain instead.
- *
- * @return dmclk_frequency_t Frequency in Hz, or 0 for an unrecognized
- *         domain or if the PLL isn't currently driving the system clock
- */
-dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domain_t domain ) )
-{
-    switch (domain) {
-        case dmclk_domain_sdio:
-        case dmclk_domain_usb:
-        case dmclk_domain_rng:
-        {
-            volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F4_RCC_BASE;
-            uint32_t pll_input_freq = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) ? current_hse_freq : HSI_VALUE;
-            return (dmclk_frequency_t)stm32_get_clk48_freq(STM32F4_RCC_BASE, pll_input_freq);
-        }
-        default:
-            return 0;
-    }
-}
-
-/* Fallback for targets where DWT CYCCNT is unavailable */
-#define DELAY_CYCLES_PER_ITERATION      2U
-
-/**
- * @brief Busy-wait delay using cycle-accurate hardware counting inside a critical section.
- *
- * The function prefers ARM DWT CYCCNT on Cortex-M4 and accumulates elapsed cycles,
- * including wrap-around handling, until the target cycle budget is reached.
- * If CYCCNT is unavailable, it falls back to a counted ASM loop.
- *
- * @param seconds Number of seconds to busy-wait
- * @return uint64_t Total number of CPU cycles consumed by the busy-wait loop
- */
-dmod_dmclk_port_api_declaration(1.0, uint64_t, _delay, ( uint32_t seconds ) )
-{
-    uint64_t target_cycles = (uint64_t)current_sysclk * (uint64_t)seconds;
-
-    if (target_cycles == 0U) {
-        return 0U;
-    }
-
-    Dmod_EnterCritical();
-
-    uint64_t elapsed = 0U;
-    if (stm32_delay_cycles_dwt(target_cycles, &elapsed) == 0) {
-        Dmod_ExitCritical();
-        return elapsed;
-    }
-
-    /* Fallback path: deterministic ASM loop with assumed 2 cycles/iteration */
-    uint32_t iterations_per_second = current_sysclk / DELAY_CYCLES_PER_ITERATION;
-    uint64_t total_iterations = 0;
-
-    for (uint32_t s = 0; s < seconds; s++) {
-        uint32_t count = iterations_per_second;
-        /* ARM Cortex-M: SUBS + BNE = exactly 2 cycles per iteration */
-        __asm__ volatile (
-            "1: subs %0, %0, #1\n\t"
-            "   bne  1b\n\t"
-            : "+r" (count)
-            :
-            : "cc"
-        );
-        total_iterations += iterations_per_second;
-    }
-
-    Dmod_ExitCritical();
-
-    return total_iterations * DELAY_CYCLES_PER_ITERATION;
-}
-
-#include <errno.h>
-dmod_dmclk_port_api_declaration(1.0, int, _sai_acquire, ( dmclk_domain_t domain, dmclk_frequency_t target, dmclk_frequency_t tolerance, dmclk_frequency_t *actual ) )
-{
-    (void)domain; (void)target; (void)tolerance; (void)actual;
-    return -ENOTSUP;
-}
-dmod_dmclk_port_api_declaration(1.0, int, _sai_release, ( dmclk_domain_t domain ) )
-{
-    (void)domain;
-    return -ENOTSUP;
+    return stm32_clock_deinit();
 }

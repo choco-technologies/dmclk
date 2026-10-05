@@ -45,7 +45,9 @@ dmod_dmclk_port_api(1.0, uint64_t, _delay, ( uint32_t seconds ) );
 /** Reserve a SAI kernel clock. Thread context only; -EBUSY on conflict.
  * target/tolerance are Hz. actual is only written on success. Compatible
  * acquisitions share PLLI2S; release once per successful acquisition.
- * Main clock reconfiguration is blocked while any reservation exists.
+ * Main clock/hibernation configuration and port deinit are blocked while
+ * reserved or failed-acquire recovery is pending. Up to 255 references per
+ * domain; -EOVERFLOW beyond that. See docs/sai-clock.md for timeout recovery.
  * Ports without this clock path return -ENOTSUP. */
 dmod_dmclk_port_api(1.0, int, _sai_acquire, ( dmclk_domain_t domain, dmclk_frequency_t target, dmclk_frequency_t tolerance, dmclk_frequency_t *actual ) );
 dmod_dmclk_port_api(1.0, int, _sai_release, ( dmclk_domain_t domain ) );

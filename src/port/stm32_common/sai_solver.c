@@ -3,15 +3,15 @@
 #include <errno.h>
 #include <limits.h>
 
-int stm32f7_sai_solve(uint32_t source, uint32_t m, uint32_t target,
-                     uint32_t tolerance, stm32f7_sai_setting_t *setting)
+int stm32_sai_solve(uint32_t source, uint32_t m, uint32_t target,
+                     uint32_t tolerance, stm32_sai_setting_t *setting)
 {
     if (!setting || !target || m < 2 || m > 63 ||
         (uint64_t)source < (uint64_t)m * 1000000 ||
         (uint64_t)source > (uint64_t)m * 2000000)
         return -EINVAL;
     uint64_t best_error = UINT64_MAX, best_denominator = 1;
-    stm32f7_sai_setting_t best = {0};
+    stm32_sai_setting_t best = {0};
     for (uint32_t n = 50; n <= 432; n++)
     {
         uint64_t numerator = (uint64_t)source * n;
@@ -28,7 +28,7 @@ int stm32f7_sai_solve(uint32_t source, uint32_t m, uint32_t target,
                 if (error * best_denominator >= best_error * denominator && best.frequency) continue;
                 best_error = error;
                 best_denominator = denominator;
-                best = (stm32f7_sai_setting_t){n, q, divq,
+                best = (stm32_sai_setting_t){n, q, divq,
                     (uint32_t)((numerator + denominator / 2) / denominator)};
             }
         }

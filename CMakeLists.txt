@@ -21,7 +21,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ======================================================================
 #               dmclk Version
 # ======================================================================
-# Allow version to be passed as a parameter, default to 0.1
+# 1.2 adds SAI reservations to the released 1.1.2 clock API.
+# Allow release builds to override the default module version.
 if(NOT DEFINED DMOD_MODULE_VERSION)
     set(DMOD_MODULE_VERSION "1.2" CACHE STRING "DMOD module version")
 endif()

@@ -36,6 +36,27 @@
 #define RCC_PLLCFGR_PLLQ_Pos    24U
 #define RCC_PLLCFGR_PLLQ_Msk    (0xFU << RCC_PLLCFGR_PLLQ_Pos)
 
+/* PLLI2S Q/DIVQ SAI clock path. Used only by ports advertising this IP. */
+#define RCC_APB2ENR_OFFSET              0x44U
+#define RCC_PLLI2SCFGR_OFFSET           0x84U
+#define RCC_PLLSAICFGR_OFFSET           0x88U
+#define RCC_DCKCFGR1_OFFSET             0x8CU
+#define RCC_CR_PLLI2SON                 (1UL << 26)
+#define RCC_CR_PLLI2SRDY                (1UL << 27)
+#define RCC_APB2ENR_SAI1EN              (1UL << 22)
+#define RCC_APB2ENR_SAI2EN              (1UL << 23)
+#define RCC_APB2ENR_SAIEN_Msk           (RCC_APB2ENR_SAI1EN | RCC_APB2ENR_SAI2EN)
+#define RCC_PLLI2SCFGR_PLLI2SN_Pos       6U
+#define RCC_PLLI2SCFGR_PLLI2SN_Msk       (0x1FFUL << RCC_PLLI2SCFGR_PLLI2SN_Pos)
+#define RCC_PLLI2SCFGR_PLLI2SQ_Pos       24U
+#define RCC_PLLI2SCFGR_PLLI2SQ_Msk       (0xFUL << RCC_PLLI2SCFGR_PLLI2SQ_Pos)
+#define RCC_DCKCFGR1_PLLI2SDIVQ_Pos      0U
+#define RCC_DCKCFGR1_PLLI2SDIVQ_Msk      (0x1FUL << RCC_DCKCFGR1_PLLI2SDIVQ_Pos)
+#define RCC_DCKCFGR1_SAI1SEL_Pos         20U
+#define RCC_DCKCFGR1_SAI2SEL_Pos         22U
+#define RCC_DCKCFGR1_SAISEL_Msk          3UL
+#define RCC_DCKCFGR1_SAISEL_PLLI2S       1UL
+
 /* RCC_APB1ENR register bits (needed to clock the PWR peripheral before its
  * registers, e.g. for Over-Drive, can be accessed) */
 #define RCC_APB1ENR_PWREN       (1U << 28)
