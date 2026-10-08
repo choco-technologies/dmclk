@@ -12,6 +12,20 @@
 #define STM32F7_RCC_BASE        0x40023800U
 #define STM32F7_PWR_BASE        0x40007000U
 
+/* Auxiliary PLLs and SAI routing (RM0385, RCC). */
+#define STM32F7_RCC_PLLI2SCFGR_OFFSET 0x84U
+#define STM32F7_RCC_PLLSAICFGR_OFFSET 0x88U
+#define STM32F7_RCC_DCKCFGR1_OFFSET   0x8CU
+#define STM32F7_RCC_PLLI2SON          (1U << 26)
+#define STM32F7_RCC_PLLI2SRDY         (1U << 27)
+#define STM32F7_RCC_PLLSAION          (1U << 28)
+#define STM32F7_RCC_PLLSAIRDY         (1U << 29)
+#define STM32F7_RCC_SAI1SEL_Pos       20U
+#define STM32F7_RCC_SAI2SEL_Pos       22U
+/* The legacy 5000-iteration timeout is too short for some auxiliary PLL
+ * configurations at 216 MHz. Keep this bound local to the new SAI path. */
+#define STM32F7_SAI_PLL_TIMEOUT       100000U
+
 /* STM32F7 clock frequency limits */
 #define STM32F7_MAX_SYSCLK      216000000U  /* Maximum system clock for STM32F7 */
 /* Above this HCLK, PWR Over-Drive mode must be enabled (RM0385 "Over-drive

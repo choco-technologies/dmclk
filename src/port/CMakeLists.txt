@@ -38,8 +38,13 @@ endif()
 dmod_add_library(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION}
     # List of source files - can include C and C++ files
     ${DMCLK_MCU_SERIES}/port.c
+    domain.c
     ${COMMON_SOURCES}
 )
+
+if(DMCLK_MCU_SERIES STREQUAL "stm32f7")
+    target_sources(${DMOD_MODULE_NAME} PRIVATE stm32f7/sai_clock.c)
+endif()
 
 target_include_directories(${DMOD_MODULE_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include

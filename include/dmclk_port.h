@@ -25,7 +25,7 @@ dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_current_frequency, ( void ) );
  * just the main system clock.
  *
  * Named by what the domain is *for*, not by how any particular family
- * derives it - on STM32F4/F7 all three values below resolve to the same
+ * derives it - on STM32F4/F7 SDIO, USB and RNG resolve to the same
  * physical signal (one PLL Q-divider), but a port for hardware where they
  * are genuinely independent clocks would return a different frequency for
  * each. A port that has no equivalent for a given value returns 0 for it -
@@ -37,6 +37,8 @@ typedef enum
     dmclk_domain_sdio = 0,  /**< Clock feeding SDIO/SDMMC peripherals */
     dmclk_domain_usb,       /**< Clock feeding USB (OTG FS/HS) peripherals */
     dmclk_domain_rng,       /**< Clock feeding the RNG peripheral */
+    dmclk_domain_sai1,      /**< Kernel/input clock feeding SAI controller 1 */
+    dmclk_domain_sai2,      /**< Kernel/input clock feeding SAI controller 2 */
 } dmclk_domain_t;
 
 /**
@@ -51,6 +53,40 @@ typedef enum
  *         domain or it isn't currently active
  */
 dmod_dmclk_port_api(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domain_t domain ) );
+
+/**
+ * @brief Reserve and, if necessary, configure a peripheral input clock.
+ *
+ * The port chooses the hardware clock source and dividers. target_hz must be
+ * nonzero; tolerance_hz is an absolute tolerance in Hz (zero means exact).
+ * actual_hz is required and is written only on success. This is the clock
+ * entering the peripheral, before its own dividers, not an audio sample rate.
+ *
+ * Compatible requests share the running clock without interrupting it. Each
+ * successful acquire needs one release. An incompatible request must not
+ * disturb existing users, including consumers of a shared physical clock.
+ * System clock reconfiguration can return -EBUSY while reservations exist.
+ * Calls are serialized by the port; callers must not change clock registers
+ * behind it and must stop using the peripheral clock before releasing it.
+ * On STM32F7, keep the SAI peripheral clock gate disabled during the first
+ * acquire and the last release, so the port can safely switch its input mux.
+ *
+ * @return 0 on success; negative errno: -EINVAL for invalid arguments,
+ * -ENOTSUP for unsupported domains, -ERANGE for an unreachable frequency,
+ * -EBUSY for a conflicting reservation/resource or concurrent clock operation,
+ * -ETIMEDOUT for hardware readiness timeout, -EOVERFLOW for reference overflow.
+ */
+dmod_dmclk_port_api(1.0, int, _acquire_domain, ( dmclk_domain_t domain, dmclk_frequency_t target_hz, dmclk_frequency_t tolerance_hz, dmclk_frequency_t *actual_hz ) );
+
+/**
+ * @brief Drop one reservation; the last release may stop a port-owned clock.
+ *
+ * Borrowed clocks and clocks still held by other domains remain running.
+ * Returns 0 on success, -EINVAL for an invalid/unreserved domain, -EBUSY for
+ * a concurrent clock operation, or a negative hardware error. On error the
+ * reservation remains held and release may be retried.
+ */
+dmod_dmclk_port_api(1.0, int, _release_domain, ( dmclk_domain_t domain ) );
 
 /**
  * @brief Busy-wait delay for a given number of seconds and return consumed CPU cycles.

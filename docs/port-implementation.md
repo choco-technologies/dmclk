@@ -453,3 +453,42 @@ void test_clock_configuration(void)
 - [API Reference](api-reference.md) - Port API function details
 - [Configuration Guide](configuration.md) - Clock configuration examples
 - [Main Documentation](dmclk.md) - Module overview
+## Domain reservation hooks
+
+Ports export `dmclk_port_acquire_domain()` and `dmclk_port_release_domain()`
+alongside the existing frequency query. `src/port/domain.c` implements argument
+validation, reference counting and serialization. The family hooks
+`dmclk_domain_acquire_hardware()` and `dmclk_domain_release_hardware()` allocate
+and free physical resources. Hardware acquire is idempotent for an already-held
+domain; hardware release runs only for that domain's final reference. Families
+must also track sharing between distinct domains backed by the same resource.
+
+Legacy clock configuration uses `dmclk_domain_begin_configuration()` and
+`dmclk_domain_end_configuration()` to reject changes while reservations exist.
+Only the operation-lock transitions run in critical sections; PLL search and
+readiness polling do not mask interrupts.
+
+The STM32F7 backend preserves PLLM, the main PLL and bus dividers. It uses the
+auxiliary PLL Q output and its post-divider. Routing follows ST's
+[HAL RCC peripheral clock configuration](https://github.com/STMicroelectronics/stm32f7xx-hal-driver/blob/master/Src/stm32f7xx_hal_rcc_ex.c),
+and additionally requires the affected SAI peripheral gate to be disabled before
+changing its source. A running PLL can only be borrowed at its current frequency.
+The port restores owned PLL configuration and affected mux/divider fields on
+final release; borrowed PLLs remain untouched.
+
+Host regressions (use a local DMOD source checkout when working offline):
+
+```sh
+cmake -S . -B build_host -DDMOD_TOOLS_NAME=arch/x86_64
+cmake --build build_host --target pll_solver_test domain_test
+ctest --test-dir build_host --output-on-failure
+```
+
+`domain_test` runs production reservation, solver and register code against fake
+RCC registers, with readiness transitions supplied by the test. It covers shared
+leases, independent sources, borrowed PLLs, invalid requests, timeouts/rollback,
+configuration exclusion and fractional-frequency tolerance.
+
+`domain_board_test` is an STM32F7 application for the dmod-boot shell. It requests
+12.288 MHz and 11.2896 MHz, checks sharing and conflicts through the exported
+API, and verifies unchanged SYSCLK, CLK48 and restored RCC register values.

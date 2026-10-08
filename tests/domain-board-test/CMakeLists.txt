@@ -1,0 +1,5 @@
+set(DMOD_MODULE_NAME domain_board_test)
+set(DMOD_AUTHOR_NAME "Patryk Kubiak")
+set(DMOD_STACK_SIZE 2048)
+dmod_add_executable(${DMOD_MODULE_NAME} ${DMOD_MODULE_VERSION} domain_board_test.c)
+target_link_libraries(${DMOD_MODULE_NAME} dmclk_port_if)

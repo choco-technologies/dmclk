@@ -74,6 +74,10 @@ add_subdirectory(src/port)
 add_subdirectory(tests/dmclk-test)
 enable_testing()
 add_subdirectory(tests/pll-solver-test)
+add_subdirectory(tests/domain-test)
+if(DMCLK_MCU_SERIES STREQUAL "stm32f7")
+    add_subdirectory(tests/domain-board-test)
+endif()
 
 # ======================================================================
 #               dmclk Module Configuration
