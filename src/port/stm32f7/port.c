@@ -1,5 +1,8 @@
 #define DMOD_ENABLE_REGISTRATION    ON
 #include "dmclk_port.h"
+#include "../domain.h"
+#include <errno.h>
+#include "sai_clock.h"
 #include "../stm32_common/stm32_common.h"
 #include "port/stm32_common_regs.h"
 #include "port/stm32f7_regs.h"
@@ -50,6 +53,11 @@ int dmod_init(const Dmod_Config_t *Config)
  */
 int dmod_deinit(void)
 {
+    int rc = dmclk_domain_begin_configuration();
+    if (rc != 0) {
+        return rc;
+    }
+    dmclk_domain_end_configuration();
     Dmod_Printf("DMDRVI interface module deinitialized (STM32F7)\n");
     return 0;
 }
@@ -62,7 +70,7 @@ int dmod_deinit(void)
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance) )
+static int configure_internal(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
     pll_config_t pll_config;
@@ -139,7 +147,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, ( dmclk_frequency
  * 
  * @return int 0 on success, non-zero on failure
  */
-dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq) )
+static int configure_external(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)STM32F7_RCC_BASE;
     pll_config_t pll_config;
@@ -218,7 +226,7 @@ dmod_dmclk_port_api_declaration(1.0, int, _configure_external, ( dmclk_frequency
  * 
  * @return int 0 on success, non-zero on failure
  */
-int dmclk_port_configure_hibernatation(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq)
+static int configure_hibernatation(dmclk_frequency_t target_freq, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator_freq)
 {
     /* LSI is typically used for hibernation/low-power modes
      * For STM32F7, LSI runs at approximately 32 kHz
@@ -333,6 +341,9 @@ dmclk_frequency_t dmclk_port_get_current_frequency(void)
 dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_domain_frequency, ( dmclk_domain_t domain ) )
 {
     switch (domain) {
+        case dmclk_domain_sai1:
+        case dmclk_domain_sai2:
+            return stm32f7_sai_frequency(STM32F7_RCC_BASE, current_hse_freq, domain);
         case dmclk_domain_sdio:
         case dmclk_domain_usb:
         case dmclk_domain_rng:
@@ -344,4 +355,55 @@ dmod_dmclk_port_api_declaration(1.0, dmclk_frequency_t, _get_domain_frequency, (
         default:
             return 0;
     }
+}
+
+/* Keep the existing SYSCLK implementation behind the reservation guard. */
+dmod_dmclk_port_api_declaration(1.0, int, _configure_internal, (dmclk_frequency_t target, dmclk_frequency_t tolerance))
+{
+    int rc = dmclk_domain_begin_configuration();
+    if (rc != 0) { return rc; }
+    rc = configure_internal(target, tolerance);
+    dmclk_domain_end_configuration();
+    return rc;
+}
+
+dmod_dmclk_port_api_declaration(1.0, int, _configure_external, (dmclk_frequency_t target, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator))
+{
+    int rc = dmclk_domain_begin_configuration();
+    if (rc != 0) { return rc; }
+    rc = configure_external(target, tolerance, oscillator);
+    dmclk_domain_end_configuration();
+    return rc;
+}
+
+dmod_dmclk_port_api_declaration(1.0, int, _configure_hibernatation, (dmclk_frequency_t target, dmclk_frequency_t tolerance, dmclk_frequency_t oscillator))
+{
+    int rc = dmclk_domain_begin_configuration();
+    if (rc != 0) { return rc; }
+    rc = configure_hibernatation(target, tolerance, oscillator);
+    dmclk_domain_end_configuration();
+    return rc;
+}
+
+int dmclk_domain_acquire_hardware(dmclk_domain_t domain, dmclk_frequency_t target,
+                                  dmclk_frequency_t tolerance, dmclk_frequency_t *actual)
+{
+    if (domain == dmclk_domain_sai1 || domain == dmclk_domain_sai2) {
+        return stm32f7_sai_acquire(STM32F7_RCC_BASE, current_hse_freq, domain, target, tolerance, actual);
+    }
+    /* Existing CLK48 domains are borrowed without retuning the system PLL. */
+    dmclk_frequency_t frequency = dmclk_port_get_domain_frequency(domain);
+    if (!dmclk_domain_matches(frequency, target, tolerance)) {
+        return -ERANGE;
+    }
+    *actual = frequency;
+    return 0;
+}
+
+int dmclk_domain_release_hardware(dmclk_domain_t domain)
+{
+    if (domain == dmclk_domain_sai1 || domain == dmclk_domain_sai2) {
+        return stm32f7_sai_release(STM32F7_RCC_BASE, domain);
+    }
+    return 0;
 }

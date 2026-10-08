@@ -99,6 +99,9 @@ int stm32_configure_flash_latency(uint32_t sysclk_freq,
  */
 int stm32_wait_clock_ready(uintptr_t rcc_base, uint32_t ready_bit, uint32_t timeout);
 
+/* Wait until a disabled clock is unlocked before restoring its dividers. */
+int stm32_wait_clock_stopped(uintptr_t rcc_base, uint32_t ready_bit, uint32_t timeout);
+
 /**
  * @brief Switch system clock source
  * 

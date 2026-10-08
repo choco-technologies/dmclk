@@ -446,3 +446,49 @@ int main(void)
     return 0;
 }
 ```
+## Peripheral input clock reservations
+
+`dmclk_port.h` provides clock domains named for their consumers, including
+`dmclk_domain_sai1` and `dmclk_domain_sai2`. Existing SDIO/USB/RNG enum values
+and API signatures are unchanged.
+
+```c
+dmclk_frequency_t actual_hz;
+int rc = dmclk_port_acquire_domain(dmclk_domain_sai2,
+                                  12288000, 3000, &actual_hz);
+if (rc == 0) {
+    /* Configure SAI's own dividers using actual_hz, then enable SAI.
+       Later stop SAI and disable its peripheral clock gate. */
+    rc = dmclk_port_release_domain(dmclk_domain_sai2);
+}
+```
+
+The frequency is the peripheral's **input clock**, not the sample rate or
+MCLK output. Tolerance is absolute Hz; zero requires an exact frequency.
+The output pointer is mandatory and remains unchanged on failure. Frequencies
+read from the STM32F7 SAI port are rounded to the nearest Hz; acquisition checks
+the unrounded rational frequency against the requested tolerance.
+
+Each successful acquire holds one reference and requires one release.
+Compatible requests share the clock without interruption. Conflicting requests
+return `-EBUSY`; an unreachable frequency returns `-ERANGE`, unsupported domains
+return `-ENOTSUP`, invalid arguments or an unmatched release return `-EINVAL`.
+Hardware readiness timeouts return `-ETIMEDOUT`. A failed release keeps its
+reference so the caller can retry. Concurrent clock mutations return `-EBUSY`.
+
+System-clock configuration and port deinitialization return `-EBUSY` while any
+domain is reserved. SDIO/USB/RNG reservations borrow their existing frequency;
+they do not retune the main PLL. After the final release the legacy configuration
+paths are available again.
+
+STM32F7 can configure an idle PLLSAI or PLLI2S with the existing oscillator and
+PLLM, or borrow an already-running compatible source. The port never retunes a
+running auxiliary PLL (including PLLSAI used by LTDC). Keep the affected SAI
+peripheral clock gate disabled during initial acquisition and final release.
+The port preserves unrelated muxes/dividers and restores its previous settings
+after the last release. Unknown HSE frequency, unavailable input sources, or
+unachievable accuracy can prevent acquisition. External SAI_CKIN is unsupported.
+
+STM32F4 currently returns `-ENOTSUP` for SAI reservations because the existing
+family-wide port does not distinguish the F4 variants' different SAI routing.
+Existing clock configuration and CLK48 domain queries remain supported.

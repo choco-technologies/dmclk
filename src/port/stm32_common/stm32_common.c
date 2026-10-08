@@ -194,8 +194,17 @@ int stm32_configure_flash_latency(uint32_t sysclk_freq,
 }
 
 /**
- * @brief Wait for clock to be ready
+ * @brief Wait for a disabled clock to unlock
  */
+int stm32_wait_clock_stopped(uintptr_t rcc_base, uint32_t ready_bit, uint32_t timeout)
+{
+    volatile RCC_TypeDef *rcc = (RCC_TypeDef *)rcc_base;
+    while (timeout--) {
+        if (!(rcc->CR & ready_bit)) { return 0; }
+    }
+    return -1;
+}
+
 int stm32_wait_clock_ready(uintptr_t rcc_base, uint32_t ready_bit, uint32_t timeout)
 {
     volatile RCC_TypeDef *RCC = (RCC_TypeDef *)rcc_base;
