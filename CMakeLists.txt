@@ -73,7 +73,10 @@ add_subdirectory(src/port)
 # ======================================================================
 add_subdirectory(tests/dmclk-test)
 enable_testing()
-add_subdirectory(tests/pll-solver-test)
+if(DMCLK_MCU_SERIES MATCHES "^stm32")
+    # the PLL of the STM32 (stm32_common.c); nothing to test on the other families
+    add_subdirectory(tests/pll-solver-test)
+endif()
 add_subdirectory(tests/domain-test)
 if(DMCLK_MCU_SERIES STREQUAL "stm32f7")
     add_subdirectory(tests/domain-board-test)
