@@ -11,7 +11,7 @@ A DMOD (Dynamic Modular System) module for configuring and managing system clock
 - **Hardware Abstraction**: Platform-independent API with hardware-specific implementations
 - **DMDRVI Integration**: Full DMOD driver interface implementation
 - **STM32 Support**: STM32F4 and STM32F7 families currently supported
-- **ESP32-S3 Support**: reads the CPU clock back, moves it between 80/160/240 MHz of the PLL, see [docs/esp32s3.md](docs/esp32s3.md)
+- **ESP32-S3 Support**: brings the PLL up (core voltage from the eFuse, flash clock) and moves the CPU between 80/160/240 MHz, see [docs/esp32s3.md](docs/esp32s3.md)
 - **Extensible**: Easy to add support for additional microcontroller families
 
 ## Quick Start

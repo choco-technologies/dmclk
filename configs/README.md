@@ -41,10 +41,17 @@ Board configurations are optimized for specific development boards with known ex
 | STM32F746G-DISCO | STM32F746NG | 25 MHz | 216 MHz | `board/stm32f746g-disco.ini` |
 | NUCLEO-F767ZI | STM32F767ZI | 8 MHz | 216 MHz | `board/nucleo-f767zi.ini` |
 | STM32F769I-DISCOVERY | STM32F769NI | 25 MHz | 216 MHz | `board/stm32f769i-discovery.ini` |
+| ESP32-S3 2.8" display board | ESP32-S3FN16R8 | 40 MHz | 240 MHz | `board/esp32s3-lcd28.ini` |
 
 ## MCU Configurations
 
 MCU configurations provide default settings for specific microcontrollers, assuming a common 8 MHz external oscillator:
+
+### ESP32-S3
+
+| MCU | Max Frequency | File |
+|-----|---------------|------|
+| ESP32-S3 | 240 MHz | `mcu/esp32s3.ini` |
 
 ### STM32F4 Series
 
